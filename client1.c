@@ -14,6 +14,10 @@
 #define CHAR_ARRAY_LENGTH 100
 
 int main() {
+  char * port = getenv ("SERVER_PORT");
+  char * address = getenv ("SERVER_ADDRESS");
+  printf("Starting client with SERVER_ADDRESS: %s\n", address);
+  printf("Starting client with SERVER_PORT: %s\n", port);
 
   /* prepare the arguments for f0 */
   int a0 = 5;
