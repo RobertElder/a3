@@ -29,6 +29,7 @@ char* f2(float a, double b) {
   char *str1;
   char *str2;
 
+  (void)str2;
   a = modff(a, &ai);
   b = modf(b, &bi);
 
