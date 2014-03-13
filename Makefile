@@ -23,5 +23,5 @@ test: client binder server
 	#  Kill any binder processes that are in the background
 	./cleanup-processes.sh
 clean:
-	rm *.o *.a client binderoutput binder
+	rm *.o *.a client binderoutput binder server
 
