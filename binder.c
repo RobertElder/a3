@@ -12,6 +12,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#include "messages.h"
+
 #define PORT "0"  
 
 #define BACKLOG 10     
@@ -123,10 +125,10 @@ int main(void)
         if (!fork()) {
             close(sockfd);
             /*  If any thing connects assume it is a server, send it a message and assume it will shut down.  TODO:  the thing we're supposed to do. */
-            int msg[3];
-	    if(send(new_fd, msg, sizeof(int)*3, 0) == -1){
-	        perror("Binder: send");
-	    }
+            struct message m;
+            m.length = 0;
+            m.type = 0;
+	    send_message(new_fd, &m);
             close(new_fd);
             exit(0);
         }

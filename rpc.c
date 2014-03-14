@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 
 #include "global_state.h"
+#include "messages.h"
 #include "rpc.h"
 /*  Declared in global_state.h */
 int server_to_binder_sockfd;
@@ -59,10 +60,8 @@ int rpcInit(){
         return 0;
     }
     /*  For now just block server until binder sends any message, then shutdown.  TODO: do the thing we're supposed to do. */
-    int buf[3];
-    int num_bytes;
-    if ((num_bytes = recv(server_to_binder_sockfd, buf, 12, 0)) == -1)
-        perror("Server recv");
+    struct message * m = recv_message(server_to_binder_sockfd);
+    (void)m;
     printf("Got message from binder to shutdown.\n");
 
     printf("rpcInit has not been implemented yet.\n");
