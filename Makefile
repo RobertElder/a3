@@ -11,7 +11,7 @@ server_functions.o: server_functions.h server_functions.c
 	gcc $(FLAGS) -g -c -o server_functions.o server_functions.c
 server_function_skels.o: server_function_skels.h server_function_skels.c
 	gcc $(FLAGS) -c -o server_function_skels.o server_function_skels.c
-server: server.c server_functions.o server_function_skels.o
+server: server.c server_functions.o server_function_skels.o librpc.a
 	gcc $(FLAGS) -L. server.c server_functions.o server_function_skels.o -lrpc -o server
 test: client binder server
 	#  Start the binder and pipe the output to a file to a file so we can automatically set the environment variables

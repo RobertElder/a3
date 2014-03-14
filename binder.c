@@ -42,8 +42,6 @@ int main(void)
     int yes=1;
     char s[INET6_ADDRSTRLEN];
     int rv;
-    int num_bytes;
-    char typed_line[LINE_BUFFER_SIZE+1];
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -124,16 +122,13 @@ int main(void)
 
         if (!fork()) {
             close(sockfd);
-            if ((num_bytes = recv(new_fd, typed_line, LINE_BUFFER_SIZE -1, 0)) == -1)
-                perror("send");
-	    typed_line[num_bytes] = '\0';
-	    printf("Received: %s\n",typed_line);
-	    if(send(new_fd, typed_line, strlen(typed_line), 0) == -1){
-	        perror("send");
+            /*  If any thing connects assume it is a server, send it a message and assume it will shut down.  TODO:  the thing we're supposed to do. */
+            int msg[3];
+	    if(send(new_fd, msg, sizeof(int)*3, 0) == -1){
+	        perror("Binder: send");
 	    }
             close(new_fd);
             exit(0);
-
         }
         close(new_fd);
     }
