@@ -162,9 +162,9 @@ int main() {
   printf("\nACTUAL return of f4: %d\n", s4);
 
   /* rpcTerminate */
-  printf("\ndo you want to terminate? y/n: ");
-  if (getchar() == 'y')
-    rpcTerminate();
+  //printf("\ndo you want to terminate? y/n: ");
+  //if (getchar() == 'y')
+  rpcTerminate();
 
   /* end of client.c */
   return 0;

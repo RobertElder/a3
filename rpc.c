@@ -1,5 +1,18 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+#include "global_state.h"
 #include "rpc.h"
+/*  Declared in global_state.h */
+int server_to_binder_sockfd;
 
 int rpcInit(){
     /*The server rst calls rpcInit, which does two things. First, it creates a connection socket
@@ -12,6 +25,40 @@ int rpcInit(){
      * int rpcInit(void);
      * The return value is 0 for success, negative if any part of the initialization sequence was unsuccessful
      * (using dirent negative values for dirent error conditions would be a good idea).*/
+
+    char * port = getenv ("SERVER_PORT");
+    char * address = getenv ("SERVER_ADDRESS");
+    printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
+    printf("Running rpcInit for server with binder SERVER_PORT: %s\n", port);
+
+    struct addrinfo hints, *servinfo;
+    int rv;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 0;
+    }
+
+    if ((server_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
+        servinfo->ai_protocol)) == -1) {
+        perror("Error in server: socket");
+    }
+
+    if (connect(server_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        close(server_to_binder_sockfd);
+        perror("Error in server: connect");
+        exit(1);
+    }
+    
+    if (servinfo == NULL) {
+        fprintf(stderr, "Server: failed to connect\n");
+        return 0;
+    }
+
     printf("rpcInit has not been implemented yet.\n");
     return -1;
 };
