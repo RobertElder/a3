@@ -64,16 +64,21 @@ struct message * recv_message(int sockfd){
 void send_message(int sockfd, struct message * message_to_send){
     int message_length = htons(message_to_send->length);
     int message_type = htons(message_to_send->type);
+    int bytes_sent;
     
     //printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
-    if(send(sockfd, &message_length, sizeof(int), 0) == -1){
+    if((bytes_sent = send(sockfd, &message_length, sizeof(int), 0)) == -1){
         perror("Error in send_message sending length.\n");
     }
 
+    assert(bytes_sent == sizeof(int));
+
     //printf("Attempting to send message type data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->type);
-    if(send(sockfd, &message_type, sizeof(int), 0) == -1){
+    if((bytes_sent = send(sockfd, &message_type, sizeof(int), 0)) == -1){
         perror("Error in send_message sending type.\n");
     }
+
+    assert(bytes_sent == sizeof(int));
 
     /*  The received_message data should be a bunch of ints, otherwise how do we convert to host order? */
     assert(message_to_send->length % sizeof(int) == 0);
@@ -85,9 +90,11 @@ void send_message(int sockfd, struct message * message_to_send){
 
     if(message_to_send->length > 0){
         //printf("Attempting to send %d bytes of data...\n", message_to_send->length);
-        if(send(sockfd, message_to_send->data, message_to_send->length, 0) == -1){
+        if((bytes_sent = send(sockfd, message_to_send->data, message_to_send->length, 0)) == -1){
             perror("Error in send_message sending data.\n");
         }
+
+        assert(bytes_sent == message_to_send->length);
     }
 }
 

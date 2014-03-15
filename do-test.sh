@@ -7,6 +7,6 @@ export SERVER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/SERVER_ADDRESS //'`
 export SERVER_PORT=`cat binderoutput | tail -n 1 | sed 's/SERVER_PORT //'`
 for i in {1..10}
 do
-    ./server
+    ./server &
 done
 ./client

@@ -35,8 +35,15 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int main(void)
-{
+void add_server(int ** server_sockets, int * num_server_sockets, int server_socket){
+   *num_server_sockets = (*num_server_sockets) + 1;
+   *server_sockets = realloc(*server_sockets, (*num_server_sockets) * sizeof(int));
+   (*server_sockets)[(*num_server_sockets) - 1] = server_socket;
+}
+
+int main(void) {
+    int num_server_sockets = 0;
+    int * server_sockets = (int)0;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     struct sigaction sa;
@@ -124,27 +131,30 @@ int main(void)
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_HELLO:{
-                //printf("Got a hello message from a server.\n");
+                printf("Got a hello message from a server.\n");
                 fflush(stdout);
-                struct message * out_msg = create_message_frame();
-                out_msg->length = 0;
-                out_msg->type = SERVER_TERMINATE;
-                send_message(m_and_fd.fd, out_msg);
-                destroy_message_frame_and_data(out_msg);
-		FD_CLR(m_and_fd.fd, &client_fds);
-                close(m_and_fd.fd);
+                add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
 	    }case BINDER_TERMINATE:{
                 printf("Got a message to terminate from a client.\n");
                 fflush(stdout);
+                /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame();
                 out_msg->length = 0;
                 out_msg->type = SERVER_TERMINATE;
-                send_message(m_and_fd.fd, out_msg);
+		int i;
+		for(i = 0; i < num_server_sockets; i++){
+                    send_message(server_sockets[i], out_msg);
+		    FD_CLR(server_sockets[i], &client_fds);
+                    close(server_sockets[i]);
+		}
                 destroy_message_frame_and_data(out_msg);
+                /*  Clean up connection from client */
 		FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
+                printf("Exiting binder...\n");
+                fflush(stdout);
                 return 0;
                 break;
 	    }default:{
