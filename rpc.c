@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <assert.h>
 
 #include "global_state.h"
 #include "messages.h"
@@ -59,10 +60,28 @@ int rpcInit(){
         fprintf(stderr, "Server: failed to connect\n");
         return 0;
     }
-    /*  For now just block server until binder sends any message, then shutdown.  TODO: do the thing we're supposed to do. */
-    struct message * m = recv_message(server_to_binder_sockfd);
-    (void)m;
-    printf("Got message from binder to shutdown.\n");
+
+    printf("Socket to binder was set up from server.\n");
+
+
+    struct message * out_msg = create_message_frame();
+    out_msg->length = 0;
+    out_msg->type = SERVER_HELLO;
+    send_message(server_to_binder_sockfd, out_msg);
+    printf("Sent HELLO message to binder from server.\n");
+    struct message * in_msg = recv_message(server_to_binder_sockfd);
+    switch (in_msg->type){
+        case SERVER_TERMINATE:{
+            printf("Got a message from binder to terminate.\n");
+            out_msg->length = 0;
+            out_msg->type = SERVER_TERMINATE_ACKNOWLEDGED;
+            send_message(server_to_binder_sockfd, out_msg);
+            destroy_message_frame_and_data(out_msg);
+            break;
+        }default:{
+            assert(0);
+        }
+    }
 
     printf("rpcInit has not been implemented yet.\n");
     return -1;
@@ -151,6 +170,9 @@ int rpcExecute(){
      * serve).
      * rpcExecute should be able to handle multiple requests from clients without blocking, so that
      * a slow server function will not choke the whole server.*/
+
+
+
     printf("rpcExecute has not been implemented yet.\n");
     return -1;
 };
@@ -161,6 +183,48 @@ int rpcTerminate(){
      * The client stub is expected to pass this request to the binder. The binder in turn will inform
      * the servers, which are all expected to gracefully terminate. The binder should terminate after all
      * servers have terminated. Clients are expected to terminate on their own cognizance. */
+
+    char * port = getenv ("SERVER_PORT");
+    char * address = getenv ("SERVER_ADDRESS");
+    printf("Running rpcTerminate for client with binder SERVER_ADDRESS: %s\n", address);
+    printf("Running rpcTerminate for client with binder SERVER_PORT: %s\n", port);
+
+    struct addrinfo hints, *servinfo;
+    int rv;
+    int client_to_binder_sockfd;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 0;
+    }
+
+    if ((client_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
+        servinfo->ai_protocol)) == -1) {
+        perror("Error in server: socket");
+    }
+
+    if (connect(client_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        close(client_to_binder_sockfd);
+        perror("Error in server: connect");
+        exit(1);
+    }
+    
+    if (servinfo == NULL) {
+        fprintf(stderr, "Server: failed to connect\n");
+        return 0;
+    }
+
+    struct message * out_msg = create_message_frame();
+    out_msg->length = 0;
+    out_msg->type = BINDER_TERMINATE;
+    send_message(client_to_binder_sockfd, out_msg);
+    destroy_message_frame_and_data(out_msg);
+    //close(client_to_binder_sockfd);
+
     printf("rpcTerminate has not been implemented yet.\n");
     return -1;
 };

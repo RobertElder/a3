@@ -17,9 +17,10 @@ struct message * recv_message(int sockfd){
     * Caller is required to de-allocate the pointer to the message, and the message data
     */
 
-    struct message * received_message = malloc(sizeof(struct message));
+    struct message * received_message = create_message_frame();
     int bytes_received;
     
+    printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
     if ((bytes_received = recv(sockfd, &(received_message->length), sizeof(int), 0)) == -1)
         perror("Error in recv_message getting length.");
     /*  Probably never going to happen, but make sure we got the whole int */
@@ -32,6 +33,7 @@ struct message * recv_message(int sockfd){
     /*  Allocate space for the rest of the received_message */
     received_message->data = (int *) malloc(received_message->length);
 
+    printf("Attempting to receive message type data (%d bytes)...\n", (int)sizeof(int));
     if ((bytes_received = recv(sockfd, &(received_message->type), sizeof(int), 0)) == -1)
         perror("Error in recv_message getting type.");
     /*  Probably never going to happen, but make sure we got the whole int */
@@ -39,6 +41,7 @@ struct message * recv_message(int sockfd){
     received_message->type = ntohs(received_message->type);
 
     if(received_message->length > 0){
+        printf("Attempting to receive message data of length %d...\n",received_message->length);
         if ((bytes_received = recv(sockfd, received_message->data, received_message->length, 0)) == -1){
             perror("Error in recv_message getting data.");
         }
@@ -59,10 +62,12 @@ void send_message(int sockfd, struct message * message_to_send){
     int message_length = htons(message_to_send->length);
     int message_type = htons(message_to_send->type);
     
+    printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
     if(send(sockfd, &message_length, sizeof(int), 0) == -1){
         perror("Error in send_message sending length.\n");
     }
 
+    printf("Attempting to send message type data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->type);
     if(send(sockfd, &message_type, sizeof(int), 0) == -1){
         perror("Error in send_message sending type.\n");
     }
@@ -75,7 +80,25 @@ void send_message(int sockfd, struct message * message_to_send){
         message_to_send->data[i] = htons(message_to_send->data[i]);
     }
 
-    if(send(sockfd, message_to_send->data, message_to_send->length, 0) == -1){
-        perror("Error in send_message sending data.\n");
+    if(message_to_send->length > 0){
+        printf("Attempting to send %d bytes of data...\n", message_to_send->length);
+        if(send(sockfd, message_to_send->data, message_to_send->length, 0) == -1){
+            perror("Error in send_message sending data.\n");
+        }
     }
+}
+
+struct message * create_message_frame(){
+    struct message * m = malloc(sizeof(struct message));
+    m->length = 0;
+    m->type = 0;
+    m->data = (int *)0;
+    return m;
+}
+
+void destroy_message_frame_and_data(struct message * m){
+    if(m->data){
+        free(m->data);
+    }
+    free(m);
 }

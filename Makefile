@@ -22,8 +22,6 @@ test: client binder server
 	sleep 1
 	#  Need to set environment variables on same like as client invokation so subshell sees environment variables
 	export SERVER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/SERVER_ADDRESS //'` && export SERVER_PORT=`cat binderoutput | tail -n 1 | sed 's/SERVER_PORT //'` && ./server && ./client
-	#  Kill any binder processes that are in the background
-	./cleanup-processes.sh
 clean:
 	rm *.o *.a client binderoutput binder server
 

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "rpc.h"
 
@@ -164,6 +165,7 @@ int main() {
   /* rpcTerminate */
   //printf("\ndo you want to terminate? y/n: ");
   //if (getchar() == 'y')
+  sleep(1);
   rpcTerminate();
 
   /* end of client.c */

@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <assert.h>
 
 #include "messages.h"
 
@@ -34,8 +35,16 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+void add_server(int * server_sockets, int * num_server_sockets, int server_socket){
+   *num_server_sockets = (*num_server_sockets) + 1;
+   server_sockets = realloc(server_sockets, (*num_server_sockets) * sizeof(int));
+   server_sockets[(*num_server_sockets) - 1] = server_socket;
+}
+
 int main(void)
 {
+    int * server_sockets = (int*)0;
+    int num_server_sockets = 0;
     int sockfd, new_fd;
     struct addrinfo hints, *servinfo, *p;
     struct sockaddr_storage their_addr;
@@ -122,17 +131,44 @@ int main(void)
             get_in_addr((struct sockaddr *)&their_addr),
             s, sizeof s);
 
-        if (!fork()) {
-            close(sockfd);
-            /*  If any thing connects assume it is a server, send it a message and assume it will shut down.  TODO:  the thing we're supposed to do. */
-            struct message m;
-            m.length = 0;
-            m.type = 0;
-	    send_message(new_fd, &m);
-            close(new_fd);
-            exit(0);
-        }
-        close(new_fd);
+        struct message * in_msg = recv_message(new_fd);
+        switch (in_msg->type){
+            case SERVER_HELLO:{
+                printf("Got a hello message from a server.\n");
+                fflush(stdout);
+                add_server(server_sockets, &num_server_sockets, new_fd);
+                struct message * out_msg = create_message_frame();
+                out_msg->length = 0;
+                out_msg->type = SERVER_TERMINATE;
+                send_message(new_fd, out_msg);
+                destroy_message_frame_and_data(out_msg);
+                break;
+	    }case BINDER_TERMINATE:{
+                printf("Got a message to terminate from a client.\n");
+                fflush(stdout);
+                struct message * out_msg = create_message_frame();
+                out_msg->length = 0;
+                out_msg->type = SERVER_TERMINATE;
+                send_message(new_fd, out_msg);
+                destroy_message_frame_and_data(out_msg);
+                int i;
+                for(i = 0; i < num_server_sockets; i++){
+                    struct message * out_msg = create_message_frame();
+                    out_msg->length = 0;
+                    out_msg->type = SERVER_TERMINATE;
+                    send_message(server_sockets[i], out_msg);
+                    destroy_message_frame_and_data(out_msg);
+	        }
+                break;
+	    }case SERVER_TERMINATE_ACKNOWLEDGED:{
+                printf("A server has acknowledged terminate request and shut down.\n");
+                return 0;
+                break;
+	    }default:{
+	        assert(0);
+	    }
+	}
+        destroy_message_frame_and_data(in_msg);
     }
 
     return 0;
