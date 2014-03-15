@@ -124,7 +124,7 @@ int main(void)
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_HELLO:{
-                printf("Got a hello message from a server.\n");
+                //printf("Got a hello message from a server.\n");
                 fflush(stdout);
                 struct message * out_msg = create_message_frame();
                 out_msg->length = 0;

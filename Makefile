@@ -16,12 +16,7 @@ server_function_skels.o: server_function_skels.h server_function_skels.c
 server: server.c server_functions.o server_function_skels.o librpc.a messages.o
 	gcc $(FLAGS) -L. server.c server_functions.o server_function_skels.o messages.o -lrpc -o server
 test: client binder server
-	#  Start the binder and pipe the output to a file to a file so we can automatically set the environment variables
-	./binder | tee binderoutput & 
-	#  Give the binder a second to bind and get address and port
-	sleep 1
-	#  Need to set environment variables on same like as client invokation so subshell sees environment variables
-	export SERVER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/SERVER_ADDRESS //'` && export SERVER_PORT=`cat binderoutput | tail -n 1 | sed 's/SERVER_PORT //'` && ./server && ./client
+	/bin/bash do-test.sh
 clean:
 	rm *.o *.a client binderoutput binder server
 

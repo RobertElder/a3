@@ -21,7 +21,7 @@ struct message * recv_message(int sockfd){
     struct message * received_message = create_message_frame();
     int bytes_received;
     
-    printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
+    //printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
     if ((bytes_received = recv(sockfd, &(received_message->length), sizeof(int), 0)) == -1)
         perror("Error in recv_message getting length.");
     assert(bytes_received != 0 && "Connection was closed by remote host.");
@@ -35,7 +35,7 @@ struct message * recv_message(int sockfd){
     /*  Allocate space for the rest of the received_message */
     received_message->data = (int *) malloc(received_message->length);
 
-    printf("Attempting to receive message type data (%d bytes)...\n", (int)sizeof(int));
+    //printf("Attempting to receive message type data (%d bytes)...\n", (int)sizeof(int));
     if ((bytes_received = recv(sockfd, &(received_message->type), sizeof(int), 0)) == -1)
         perror("Error in recv_message getting type.");
     assert(bytes_received != 0 && "Connection was closed by remote host.");
@@ -44,7 +44,7 @@ struct message * recv_message(int sockfd){
     received_message->type = ntohs(received_message->type);
 
     if(received_message->length > 0){
-        printf("Attempting to receive message data of length %d...\n",received_message->length);
+        //printf("Attempting to receive message data of length %d...\n",received_message->length);
         if ((bytes_received = recv(sockfd, received_message->data, received_message->length, 0)) == -1){
             perror("Error in recv_message getting data.");
         }
@@ -65,12 +65,12 @@ void send_message(int sockfd, struct message * message_to_send){
     int message_length = htons(message_to_send->length);
     int message_type = htons(message_to_send->type);
     
-    printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
+    //printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
     if(send(sockfd, &message_length, sizeof(int), 0) == -1){
         perror("Error in send_message sending length.\n");
     }
 
-    printf("Attempting to send message type data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->type);
+    //printf("Attempting to send message type data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->type);
     if(send(sockfd, &message_type, sizeof(int), 0) == -1){
         perror("Error in send_message sending type.\n");
     }
@@ -84,7 +84,7 @@ void send_message(int sockfd, struct message * message_to_send){
     }
 
     if(message_to_send->length > 0){
-        printf("Attempting to send %d bytes of data...\n", message_to_send->length);
+        //printf("Attempting to send %d bytes of data...\n", message_to_send->length);
         if(send(sockfd, message_to_send->data, message_to_send->length, 0) == -1){
             perror("Error in send_message sending data.\n");
         }
@@ -126,7 +126,7 @@ struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds
         for(i = 0; i <= *max_fd; i++) {
             /*  If we can read from it and it is a listener that accepts new connections */
             if (FD_ISSET(i, &updated_fds) && FD_ISSET(i, listener_fds) ) {
-                printf("Accepting incomming connection.\n");
+                //printf("Accepting incomming connection.\n");
                 socklen_t addrlen = sizeof remoteaddr;
                 int newfd = accept(i, (struct sockaddr *)&remoteaddr, &addrlen);
 
@@ -140,7 +140,7 @@ struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds
                 }
             /*  Data from an already open connection */
             }else if (FD_ISSET(i, &updated_fds)){
-                printf("Accepting incomming data.\n");
+                //printf("Accepting incomming data.\n");
                 struct message_and_fd rtn;
                 rtn.message = recv_message(i);
                 rtn.fd = i;

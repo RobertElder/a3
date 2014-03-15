@@ -30,8 +30,8 @@ int rpcInit(){
 
     char * port = getenv ("SERVER_PORT");
     char * address = getenv ("SERVER_ADDRESS");
-    printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
-    printf("Running rpcInit for server with binder SERVER_PORT: %s\n", port);
+    //printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
+    //printf("Running rpcInit for server with binder SERVER_PORT: %s\n", port);
 
     struct addrinfo hints, *servinfo;
     int rv;
@@ -61,18 +61,18 @@ int rpcInit(){
         return 0;
     }
 
-    printf("Socket to binder was set up from server.\n");
+    //printf("Socket to binder was set up from server.\n");
 
 
     struct message * out_msg = create_message_frame();
     out_msg->length = 0;
     out_msg->type = SERVER_HELLO;
     send_message(server_to_binder_sockfd, out_msg);
-    printf("Sent HELLO message to binder from server.\n");
+    //printf("Sent HELLO message to binder from server.\n");
     struct message * in_msg = recv_message(server_to_binder_sockfd);
     switch (in_msg->type){
         case SERVER_TERMINATE:{
-            printf("Got a message from binder to terminate.\n");
+            printf("In Server: Got a message from binder to terminate.\n");
             break;
         }default:{
             assert(0);
@@ -80,7 +80,7 @@ int rpcInit(){
     }
     destroy_message_frame_and_data(out_msg);
 
-    printf("rpcInit has not been implemented yet.\n");
+    //printf("rpcInit has not been implemented yet.\n");
     return -1;
 };
 
@@ -118,7 +118,7 @@ int rpcCall(char* name, int* argTypes, void** args){
      * #define ARG_INPUT 31
      * #define ARG_OUTPUT 30
      * */
-    printf("rpcCall has not been implemented yet.\n");
+    //printf("rpcCall has not been implemented yet.\n");
     return -1;
 };
 
@@ -139,7 +139,7 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
      * CacheCall. For the clients using rpcCall the behavior would be unchanged i.e. for every request,
      * the rpcCall would rst send the normal location request, get a server and then send the request to
      * that particular server.*/
-    printf("rpcCacheCall has not been implemented yet.\n");
+    //printf("rpcCacheCall has not been implemented yet.\n");
     return -1;
 };
 
@@ -155,7 +155,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     or not. In the normal case, it will return zero. In case of an error it will return a negative value
     meaning that the server function execution failed (for example, wrong arguments). In this case,
     the RPC library at the server side should return an RPC failure message to the client. */
-    printf("rpcRegister has not been implemented yet.\n");
+    //printf("rpcRegister has not been implemented yet.\n");
     return -1;
 };
 
@@ -170,7 +170,7 @@ int rpcExecute(){
 
 
 
-    printf("rpcExecute has not been implemented yet.\n");
+    //printf("rpcExecute has not been implemented yet.\n");
     return -1;
 };
 
@@ -183,8 +183,8 @@ int rpcTerminate(){
 
     char * port = getenv ("SERVER_PORT");
     char * address = getenv ("SERVER_ADDRESS");
-    printf("Running rpcTerminate for client with binder SERVER_ADDRESS: %s\n", address);
-    printf("Running rpcTerminate for client with binder SERVER_PORT: %s\n", port);
+    //printf("Running rpcTerminate for client with binder SERVER_ADDRESS: %s\n", address);
+    //printf("Running rpcTerminate for client with binder SERVER_PORT: %s\n", port);
 
     struct addrinfo hints, *servinfo;
     int rv;
@@ -222,6 +222,6 @@ int rpcTerminate(){
     destroy_message_frame_and_data(out_msg);
     //close(client_to_binder_sockfd);
 
-    printf("rpcTerminate has not been implemented yet.\n");
+    //printf("rpcTerminate has not been implemented yet.\n");
     return -1;
 };
