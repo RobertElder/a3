@@ -73,15 +73,12 @@ int rpcInit(){
     switch (in_msg->type){
         case SERVER_TERMINATE:{
             printf("Got a message from binder to terminate.\n");
-            out_msg->length = 0;
-            out_msg->type = SERVER_TERMINATE_ACKNOWLEDGED;
-            send_message(server_to_binder_sockfd, out_msg);
-            destroy_message_frame_and_data(out_msg);
             break;
         }default:{
             assert(0);
         }
     }
+    destroy_message_frame_and_data(out_msg);
 
     printf("rpcInit has not been implemented yet.\n");
     return -1;
@@ -204,12 +201,12 @@ int rpcTerminate(){
 
     if ((client_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
         servinfo->ai_protocol)) == -1) {
-        perror("Error in server: socket");
+        perror("Error in client: socket");
     }
 
     if (connect(client_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
         close(client_to_binder_sockfd);
-        perror("Error in server: connect");
+        perror("Error in client: connect");
         exit(1);
     }
     

@@ -35,24 +35,20 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void add_server(int * server_sockets, int * num_server_sockets, int server_socket){
-   *num_server_sockets = (*num_server_sockets) + 1;
-   server_sockets = realloc(server_sockets, (*num_server_sockets) * sizeof(int));
-   server_sockets[(*num_server_sockets) - 1] = server_socket;
-}
-
 int main(void)
 {
-    int * server_sockets = (int*)0;
-    int num_server_sockets = 0;
-    int sockfd, new_fd;
+    int sockfd;
     struct addrinfo hints, *servinfo, *p;
-    struct sockaddr_storage their_addr;
-    socklen_t sin_size;
     struct sigaction sa;
     int yes=1;
-    char s[INET6_ADDRSTRLEN];
     int rv;
+
+    int max_fd;
+    fd_set client_fds;
+    fd_set listener_fds;
+
+    FD_ZERO(&client_fds);
+    FD_ZERO(&listener_fds);
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -111,6 +107,10 @@ int main(void)
         exit(1);
     }
 
+    FD_SET(sockfd, &client_fds);
+    FD_SET(sockfd, &listener_fds);
+    max_fd = sockfd;
+
     sa.sa_handler = sigchld_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
@@ -120,28 +120,19 @@ int main(void)
     }
 
     while(1) {
-        sin_size = sizeof their_addr;
-        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-        if (new_fd == -1) {
-            perror("accept");
-            continue;
-        }
-
-        inet_ntop(their_addr.ss_family,
-            get_in_addr((struct sockaddr *)&their_addr),
-            s, sizeof s);
-
-        struct message * in_msg = recv_message(new_fd);
+        struct message_and_fd m_and_fd = multiplexed_recv_message(&max_fd, &client_fds, &listener_fds);
+        struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_HELLO:{
                 printf("Got a hello message from a server.\n");
                 fflush(stdout);
-                add_server(server_sockets, &num_server_sockets, new_fd);
                 struct message * out_msg = create_message_frame();
                 out_msg->length = 0;
                 out_msg->type = SERVER_TERMINATE;
-                send_message(new_fd, out_msg);
+                send_message(m_and_fd.fd, out_msg);
                 destroy_message_frame_and_data(out_msg);
+		FD_CLR(m_and_fd.fd, &client_fds);
+                close(m_and_fd.fd);
                 break;
 	    }case BINDER_TERMINATE:{
                 printf("Got a message to terminate from a client.\n");
@@ -149,19 +140,11 @@ int main(void)
                 struct message * out_msg = create_message_frame();
                 out_msg->length = 0;
                 out_msg->type = SERVER_TERMINATE;
-                send_message(new_fd, out_msg);
+                send_message(m_and_fd.fd, out_msg);
                 destroy_message_frame_and_data(out_msg);
-                int i;
-                for(i = 0; i < num_server_sockets; i++){
-                    struct message * out_msg = create_message_frame();
-                    out_msg->length = 0;
-                    out_msg->type = SERVER_TERMINATE;
-                    send_message(server_sockets[i], out_msg);
-                    destroy_message_frame_and_data(out_msg);
-	        }
-                break;
-	    }case SERVER_TERMINATE_ACKNOWLEDGED:{
-                printf("A server has acknowledged terminate request and shut down.\n");
+		FD_CLR(m_and_fd.fd, &client_fds);
+                close(m_and_fd.fd);
+                destroy_message_frame_and_data(in_msg);
                 return 0;
                 break;
 	    }default:{
