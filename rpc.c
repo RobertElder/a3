@@ -224,6 +224,7 @@ int rpcCall(char* name, int* argTypes, void** args){
     struct message * out_msg = create_message_frame(
         msg_length, LOC_REQUEST, (int*)buffer);
     send_message(binder_sockfd, out_msg);
+    destroy_message_frame_and_data(out_msg);
 
     // receive the server location for the procedure
     struct message * msg = recv_message(binder_sockfd);
@@ -231,6 +232,7 @@ int rpcCall(char* name, int* argTypes, void** args){
     // if cannot get the location, return a negative value as a reson/error code
     if (msg->type == LOC_FAILURE) {
         // TODO: should return the reason code present in the data
+        destroy_message_frame_and_data(msg);
         return -1;
     }
 
@@ -244,6 +246,7 @@ int rpcCall(char* name, int* argTypes, void** args){
     // send the server an execute req
 
 
+    destroy_message_frame_and_data(msg);
     // return 0 after sending the req
     return -1;
 };
@@ -285,7 +288,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     char * buffer = malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
 
     char * hostname = get_fully_qualified_hostname();
-    int port = get_port_from_addrinfo(server_to_client_addrinfo);
+    int port = 12;//get_port_from_addrinfo(server_to_client_addrinfo);
     memcpy(buffer, hostname, HOSTNAME_BUFFER_LENGTH);
     memcpy(&(buffer[HOSTNAME_BUFFER_LENGTH]), &port, sizeof(int));
 

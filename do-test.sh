@@ -1,5 +1,5 @@
 SUPPRESSIONS=""
-#SUPPRESSIONS="--gen-suppressions=all"
+SUPPRESSIONS="--gen-suppressions=all"
 #  Start the binder and pipe the output to a file to a file so we can automatically set the environment variables
 valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./binder | tee binderoutput & 
 #  Give the binder a second to bind and get address and port
