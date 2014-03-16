@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 /*  Declared in global_state.h */
-extern int server_to_binder_sockfd;
 extern const char * context_str;
 
 int main(int argc, char *argv[]) {
@@ -70,10 +69,6 @@ int main(int argc, char *argv[]) {
 
   /* call rpcExecute */
   rpcExecute();
-
-  //printf("Server closing socket definition '%d' to binder\n", server_to_binder_sockfd);
-  /*  Close the connection that we created in rpcInit */
-  close(server_to_binder_sockfd);
 
   /* return */
   return 0;

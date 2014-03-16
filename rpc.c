@@ -17,8 +17,8 @@
 #define BACKLOG 10
 
 
-/*  Declared in global_state.h */
 int server_to_binder_sockfd;
+/*  Declared in global_state.h */
 const char * context_str;
 
 int server_max_fd;
@@ -330,6 +330,8 @@ int rpcExecute(){
 
 exit:
     freeaddrinfo(client_sock_servinfo);
+    /*  Close the connection that we created in rpcInit */
+    close(server_to_binder_sockfd);
     //printf("rpcExecute has not been implemented yet.\n");
     return -1;
 };
