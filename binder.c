@@ -15,9 +15,9 @@
 
 #include "messages.h"
 
-#define PORT "0"  
+#define PORT "0"
 
-#define BACKLOG 10     
+#define BACKLOG 10
 
 #define CONTEXT "Binder"
 
@@ -112,38 +112,50 @@ int main(void) {
     while(1) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(&max_fd, &client_fds, &listener_fds);
         struct message * in_msg = m_and_fd.message;
-        switch (in_msg->type){
-            case SERVER_HELLO:{
+        switch (in_msg->type) {
+            case SERVER_HELLO: {
                 print_with_flush(CONTEXT, "Got a hello message from a server.\n");
                 add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
-	    }case SERVER_REGISTER:{
+	        } case SERVER_REGISTER: {
                 int port;
                 memcpy(&port, &(((char *)in_msg->data)[HOSTNAME_BUFFER_LENGTH]), sizeof(int));
                 print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", (char *)in_msg->data, port);
                 break;
-	    }case BINDER_TERMINATE:{
+	        } case BINDER_TERMINATE: {
                 print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
-		int i;
-		for(i = 0; i < num_server_sockets; i++){
+		        int i;
+        		for (i = 0; i < num_server_sockets; i++){
                     send_message(server_sockets[i], out_msg);
-		    FD_CLR(server_sockets[i], &client_fds);
+        		    FD_CLR(server_sockets[i], &client_fds);
                     close(server_sockets[i]);
-		}
+        		}
                 destroy_message_frame_and_data(out_msg);
                 /*  Clean up connection from client */
-		FD_CLR(m_and_fd.fd, &client_fds);
+		        FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
                 print_with_flush(CONTEXT, "Exiting binder...\n");
                 free(server_sockets);
+
                 return 0;
                 break;
-	    }default:{
-	        assert(0);
-	    }
+    	    } case LOC_REQUEST: {
+                struct location_msg * loc = malloc(sizeof(struct location_msg));
+                char hostname[HOSTNAME_BUFFER_LENGTH] = "test";
+                memcpy(&(loc->hostname), hostname, HOSTNAME_BUFFER_LENGTH);
+                loc->port = 10;
+
+                struct message * out_msg = create_message_frame(
+                    sizeof(struct location_msg), LOC_SUCCESS, (int*)loc);
+                send_message(m_and_fd.fd, out_msg);
+                break;
+
+            } default: {
+    	        assert(0);
+    	    }
 	}
         destroy_message_frame_and_data(in_msg);
     }

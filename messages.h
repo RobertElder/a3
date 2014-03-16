@@ -6,12 +6,17 @@
 #include <netdb.h>
 
 #define HOSTNAME_BUFFER_LENGTH 300
+#define FUNCTION_NAME_LENGTH 300
 
 enum message_type {
     SERVER_HELLO,
     SERVER_TERMINATE,
     BINDER_TERMINATE,
-    SERVER_REGISTER
+    SERVER_REGISTER,
+    LOC_REQUEST,
+    LOC_SUCCESS,
+    LOC_FAILURE,
+    EXECUTE
 };
 
 struct message{
@@ -24,6 +29,11 @@ struct message{
 struct message_and_fd{
     struct message * message;
     int fd;
+};
+
+struct location_msg {
+    char hostname[HOSTNAME_BUFFER_LENGTH];
+    int port;
 };
 
 struct message * recv_message(int);

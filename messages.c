@@ -22,52 +22,57 @@ struct message * recv_message(int sockfd){
 
     struct message * received_message = create_message_frame(0,0,0);
     int bytes_received;
-    
+
     //printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
-    if ((bytes_received = recv(sockfd, &(received_message->length), sizeof(int), 0)) == -1)
-        perror("Error in recv_message getting length.");
+    bytes_received = recv(sockfd, &(received_message->length), sizeof(int), 0);
+
+    if (bytes_received == -1) perror("Error in recv_message getting length.");
     assert(bytes_received != 0 && "Connection was closed by remote host.");
+
     /*  Probably never going to happen, but make sure we got the whole int */
     assert(bytes_received == sizeof(int));
+
     received_message->length = ntohl(received_message->length);
-    /*  If this assertion fails, then there is probably a problem with the messaging format */
-    assert(received_message->length < 1000 && received_message->length  > -1);
+
     /*  The received_message data should be a bunch of ints, otherwise how do we convert to host order? */
     assert(received_message->length % sizeof(int) == 0);
+
     /*  Allocate space for the rest of the received_message */
     received_message->data = (int *) malloc(received_message->length);
 
     //printf("Attempting to receive message type data (%d bytes)...\n", (int)sizeof(int));
-    if ((bytes_received = recv(sockfd, &(received_message->type), sizeof(int), 0)) == -1)
-        perror("Error in recv_message getting type.");
+    bytes_received = recv(sockfd, &(received_message->type), sizeof(int), 0);
+
+    if (bytes_received == -1) perror("Error in recv_message getting type.");
     assert(bytes_received != 0 && "Connection was closed by remote host.");
+
     /*  Probably never going to happen, but make sure we got the whole int */
     assert(bytes_received == sizeof(int));
     received_message->type = ntohl(received_message->type);
 
     if(received_message->length > 0){
         //printf("Attempting to receive message data of length %d...\n",received_message->length);
-        if ((bytes_received = recv(sockfd, received_message->data, received_message->length, 0)) == -1){
-            perror("Error in recv_message getting data.");
-        }
+        bytes_received = recv(sockfd, received_message->data, received_message->length, 0);
+        if (bytes_received == -1) perror("Error in recv_message getting data.");
+
         /*  0 means closed connection */
         assert(bytes_received != 0);
         /*  Probably never going to happen, but make sure we got the whole int */
         assert(bytes_received == received_message->length);
+
         int i;
-        for(i = 0; i < received_message->length % sizeof(int); i++){
+        for (i = 0; i < received_message->length % sizeof(int); i++) {
             received_message->data[i] = ntohl(received_message->data[i]);
         }
     }
     return received_message;
 }
 
-
 void send_message(int sockfd, struct message * message_to_send){
     int message_length = htonl(message_to_send->length);
     int message_type = htonl(message_to_send->type);
     int bytes_sent;
-    
+
     //printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
     if((bytes_sent = send(sockfd, &message_length, sizeof(int), 0)) == -1){
         perror("Error in send_message sending length.\n");
@@ -114,7 +119,6 @@ void destroy_message_frame_and_data(struct message * m){
     }
     free(m);
 }
-
 
 struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds, fd_set * listener_fds){
     /*  max_fd is a pointer to an int that describes the max value of an fd in client_fds */

@@ -14,7 +14,7 @@
 #include "messages.h"
 #include "rpc.h"
 
-#define BACKLOG 10     
+#define BACKLOG 10
 
 
 /*  Declared in global_state.h */
@@ -24,12 +24,13 @@ const char * context_str;
 int server_max_fd;
 fd_set server_connection_fds;
 fd_set server_listener_fds;
-struct addrinfo * server_to_client_addrinfo;
+struct addrinfo * server_to_client_addrinfo = NULL;
 
 struct addrinfo * client_sock_servinfo;
 
-int server_to_binder_setup(char * port, char * address){
+int binder_socket_setup(char * port, char * address){
     struct addrinfo hints, *servinfo;
+    int binder_sockfd;
     int rv;
 
     memset(&hints, 0, sizeof hints);
@@ -38,29 +39,31 @@ int server_to_binder_setup(char * port, char * address){
 
     if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
+        return -1;
     }
 
-    if ((server_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
-        servinfo->ai_protocol)) == -1) {
+    binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+    if (binder_sockfd == -1) {
         perror("Error in server: socket");
-        return 1;
+        return -1;
     }
 
-    if (connect(server_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
-        close(server_to_binder_sockfd);
+    if (connect(binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        close(binder_sockfd);
         perror("Error in server: connect");
-        return 1;
+        return -1;
     }
-    
+
     if (servinfo == NULL) {
         fprintf(stderr, "Server: failed to connect\n");
-        return 1;
+        return -1;
     }
     freeaddrinfo(servinfo);
-    return 0;
+    // socket successfuly created
+    return binder_sockfd;
 }
 
+// set up socket to listen to clients
 int server_to_clients_setup(){
     int sockfd;
     struct addrinfo hints;
@@ -100,9 +103,9 @@ int server_to_clients_setup(){
 	    perror("getsockname");
 	}else{
 	    char * hostname = get_fully_qualified_hostname();
-            printf("SERVER_ADDRESS %s\n", hostname);
-            printf("SERVER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
-            free(hostname);
+        printf("SERVER_ADDRESS %s\n", hostname);
+        printf("SERVER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
+        free(hostname);
 	    /* Flush the output so we can read it from the file */
 	    fflush(stdout);
 	}
@@ -130,7 +133,7 @@ int server_to_clients_setup(){
 }
 
 int rpcInit(){
-    /*The server rst calls rpcInit, which does two things. First, it creates a connection socket
+    /*The server first calls rpcInit, which does two things. First, it creates a connection socket
      * to be used for accepting connections from clients. Secondly, it opens a connection to the binder,
      * this connection is also used by the server for sending register requests to the binder and is left
      * open as long as the server is up so that the binder knows the server is available. This set of
@@ -143,21 +146,28 @@ int rpcInit(){
 
     FD_ZERO(&server_connection_fds);
     FD_ZERO(&server_listener_fds);
+    // TODO: should be BINDER port and address
     char * port = getenv ("SERVER_PORT");
     char * address = getenv ("SERVER_ADDRESS");
     //printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
     //printf("Running rpcInit for server with binder SERVER_PORT: %s\n", port);
 
-    if(server_to_binder_setup(port, address)){
+    server_to_binder_sockfd = binder_socket_setup(port, address);
+    if (server_to_binder_sockfd < 0) {
         print_with_flush(context_str, "Failed to setup connection to binder.\n");
+        return -1;
     }
     /*  We want to continue to listen for messages from the binder */
     FD_SET(server_to_binder_sockfd, &server_connection_fds);
     server_max_fd = server_to_binder_sockfd;
 
-    server_to_clients_setup();
+    if (server_to_clients_setup()) {
+        print_with_flush(context_str, "Failed to setup client litener.\n");
+        return -1;
+    }
 
     //printf("rpcInit has not been implemented yet.\n");
+    // if get here, everything should have been et up correctly, return 0
     return -1;
 };
 
@@ -175,8 +185,8 @@ int rpcCall(char* name, int* argTypes, void** args){
      * to", \output from", or \input to and output from" the server. Each argument has an integer to
      * encode the type information. These will collectively form the argTypes array. Thus argTypes[0]
      * species the type information for args[0], and so forth.
-     * The argument type integer will be broken down as follows. The rst byte will specify the
-     * input/output nature of the argument. Specically, if the rst bit is set then the argument is input
+     * The argument type integer will be broken down as follows. Therst byte will specify the
+     * input/output nature of the argument. Specically, if therst bit is set then the argument is input
      * to the server. If the second bit is set the argument is output from the server. The remaining
      * 6 bits of this byte are currently undened and must be set to 0. The next byte contains argument
      * type information. The types are the standard C types, excluding the null terminated string for
@@ -191,11 +201,50 @@ int rpcCall(char* name, int* argTypes, void** args){
      * of the argument type integer will specify the length of the array. Arrays are limited to a length of
      * 216. If the array size is 0, the argument is considered to be a scalar, not an array. Note that it is
      * expected that the client programmer will have reserved successcient space for any output arrays.
-     * You may also nd useful the denitions
+     * You may alsond useful the denitions
      * #define ARG_INPUT 31
      * #define ARG_OUTPUT 30
      * */
     //printf("rpcCall has not been implemented yet.\n");
+
+    // send a location req msg to the binder
+    // TODO: should be BINDER port and address
+    char * port = getenv ("SERVER_PORT");
+    char * address = getenv ("SERVER_ADDRESS");
+    int binder_sockfd = binder_socket_setup(port, address);
+    if (binder_sockfd < 0) {
+        fprintf(stderr, "Failed to create a binder socket.\n");
+        return -1;
+    }
+
+    int msg_length = FUNCTION_NAME_LENGTH + sizeof(int);
+    char * buffer = malloc(msg_length);
+    memcpy(buffer, name, FUNCTION_NAME_LENGTH);
+
+    struct message * out_msg = create_message_frame(
+        msg_length, LOC_REQUEST, (int*)buffer);
+    send_message(binder_sockfd, out_msg);
+
+    // receive the server location for the procedure
+    struct message * msg = recv_message(binder_sockfd);
+
+    // if cannot get the location, return a negative value as a reson/error code
+    if (msg->type == LOC_FAILURE) {
+        // TODO: should return the reason code present in the data
+        return -1;
+    }
+
+    assert(msg->type == LOC_SUCCESS);
+
+    // retrieve server identifier and port from the message
+    struct location_msg loc;
+    memcpy(&loc, msg->data, sizeof(loc));
+    fprintf(stderr, "Received hostname: %s\n", loc.hostname);
+
+    // send the server an execute req
+
+
+    // return 0 after sending the req
     return -1;
 };
 
@@ -214,7 +263,7 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
      * or failure in the case where all servers are exhausted without success.
      * The rpc library should only cache results and operate in this mode when the client uses rpc-
      * CacheCall. For the clients using rpcCall the behavior would be unchanged i.e. for every request,
-     * the rpcCall would rst send the normal location request, get a server and then send the request to
+     * the rpcCall wouldrst send the normal location request, get a server and then send the request to
      * that particular server.*/
     //printf("rpcCacheCall has not been implemented yet.\n");
     return -1;
@@ -226,7 +275,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     successful registration, positive for a warning (e.g., this is the same as some previously registered
     procedure), or negative for failure (e.g., could not locate binder). The function also makes an entry
     in a local database, associating the server skeleton with the name and list of argument types. The
-    rst two parameters are the same as those for the rpcCall function. The third parameter is the
+rst two parameters are the same as those for the rpcCall function. The third parameter is the
     address of the server skeleton, which corresponds to the server procedure that is being registered.
     The skeleton function returns an integer to indicate if the server function call executes correctly
     or not. In the normal case, it will return zero. In case of an error it will return a negative value
@@ -234,10 +283,12 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
     char * buffer = malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
+
     char * hostname = get_fully_qualified_hostname();
     int port = get_port_from_addrinfo(server_to_client_addrinfo);
     memcpy(buffer, hostname, HOSTNAME_BUFFER_LENGTH);
     memcpy(&(buffer[HOSTNAME_BUFFER_LENGTH]), &port, sizeof(int));
+
     struct message * out_msg = create_message_frame(HOSTNAME_BUFFER_LENGTH + sizeof(int), SERVER_REGISTER, (int*)buffer);
     send_message(server_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
@@ -317,7 +368,7 @@ int rpcTerminate(){
         freeaddrinfo(servinfo);
         return 1;
     }
-    
+
     if (servinfo == NULL) {
         fprintf(stderr, "Server: failed to connect\n");
         freeaddrinfo(servinfo);
@@ -328,7 +379,7 @@ int rpcTerminate(){
     send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
     close(client_to_binder_sockfd);
-    
+
     freeaddrinfo(servinfo);
 
     //printf("rpcTerminate has not been implemented yet.\n");
