@@ -62,23 +62,6 @@ int rpcInit(){
         return 0;
     }
 
-    //printf("Socket to binder was set up from server.\n");
-
-
-    struct message * out_msg = create_message_frame(0, SERVER_HELLO, 0);
-    send_message(server_to_binder_sockfd, out_msg);
-    //printf("Sent HELLO message to binder from server.\n");
-    struct message * in_msg = recv_message(server_to_binder_sockfd);
-    switch (in_msg->type){
-        case SERVER_TERMINATE:{
-            print_with_flush(context_str, "Got a message from binder to terminate.\n");
-            break;
-        }default:{
-            assert(0);
-        }
-    }
-    destroy_message_frame_and_data(out_msg);
-
     //printf("rpcInit has not been implemented yet.\n");
     return -1;
 };
@@ -167,7 +150,18 @@ int rpcExecute(){
      * rpcExecute should be able to handle multiple requests from clients without blocking, so that
      * a slow server function will not choke the whole server.*/
 
-
+    struct message * out_msg = create_message_frame(0, SERVER_HELLO, 0);
+    send_message(server_to_binder_sockfd, out_msg);
+    struct message * in_msg = recv_message(server_to_binder_sockfd);
+    switch (in_msg->type){
+        case SERVER_TERMINATE:{
+            print_with_flush(context_str, "Got a message from binder to terminate.\n");
+            break;
+        }default:{
+            assert(0);
+        }
+    }
+    destroy_message_frame_and_data(out_msg);
 
     //printf("rpcExecute has not been implemented yet.\n");
     return -1;

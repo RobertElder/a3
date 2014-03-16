@@ -1,0 +1,14 @@
+SERVER_ADDRESS ubuntu1204-002.student.cs.uwaterloo.ca
+SERVER_PORT 16119
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a hello message from a server.
+Binder: Got a message to terminate from a client.
+Binder: Exiting binder...
