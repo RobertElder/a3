@@ -121,7 +121,7 @@ int server_to_clients_setup(){
 
     FD_SET(sockfd, &server_connection_fds);
     FD_SET(sockfd, &server_listener_fds);
-    if(sockfd > server_max_fd)
+    if(server_max_fd > sockfd)
         server_max_fd = sockfd;
 
     return 0;
@@ -231,10 +231,15 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     meaning that the server function execution failed (for example, wrong arguments). In this case,
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
+    char * buffer = malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
     char * hostname = get_fully_qualified_hostname();
-    struct message * out_msg = create_message_frame(HOSTNAME_BUFFER_LENGTH, SERVER_REGISTER, (int*)hostname);
+    int port = get_port_from_addrinfo(server_to_client_addrinfo);
+    memcpy(buffer, hostname, HOSTNAME_BUFFER_LENGTH);
+    memcpy(&(buffer[HOSTNAME_BUFFER_LENGTH]), &port, sizeof(int));
+    struct message * out_msg = create_message_frame(HOSTNAME_BUFFER_LENGTH + sizeof(int), SERVER_REGISTER, (int*)buffer);
     send_message(server_to_binder_sockfd, out_msg);
-    destroy_message_frame_and_data(out_msg);   
+    destroy_message_frame_and_data(out_msg);
+    free(hostname);
     return -1;
 };
 

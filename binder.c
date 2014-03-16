@@ -119,7 +119,9 @@ int main(void) {
                 add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
 	    }case SERVER_REGISTER:{
-                print_with_flush(CONTEXT, "Got a register message from server at %s.\n", (char *)in_msg->data);
+                int port;
+                memcpy(&port, &(((char *)in_msg->data)[HOSTNAME_BUFFER_LENGTH]), sizeof(int));
+                print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", (char *)in_msg->data, port);
                 break;
 	    }case BINDER_TERMINATE:{
                 print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
