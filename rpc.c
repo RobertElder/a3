@@ -64,9 +64,7 @@ int rpcInit(){
     //printf("Socket to binder was set up from server.\n");
 
 
-    struct message * out_msg = create_message_frame();
-    out_msg->length = 0;
-    out_msg->type = SERVER_HELLO;
+    struct message * out_msg = create_message_frame(0, SERVER_HELLO, 0);
     send_message(server_to_binder_sockfd, out_msg);
     //printf("Sent HELLO message to binder from server.\n");
     struct message * in_msg = recv_message(server_to_binder_sockfd);
@@ -215,9 +213,7 @@ int rpcTerminate(){
         return 0;
     }
 
-    struct message * out_msg = create_message_frame();
-    out_msg->length = 0;
-    out_msg->type = BINDER_TERMINATE;
+    struct message * out_msg = create_message_frame(0, BINDER_TERMINATE, 0);
     send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
     //close(client_to_binder_sockfd);

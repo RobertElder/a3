@@ -27,6 +27,6 @@ struct message_and_fd{
 
 struct message * recv_message(int);
 void send_message(int, struct message *);
-struct message * create_message_frame();
+struct message * create_message_frame(int, enum message_type, int *);
 void destroy_message_frame_and_data(struct message *);
 struct message_and_fd multiplexed_recv_message(int *, fd_set *, fd_set *);

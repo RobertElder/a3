@@ -18,7 +18,7 @@ struct message * recv_message(int sockfd){
     * Caller is required to de-allocate the pointer to the message, and the message data
     */
 
-    struct message * received_message = create_message_frame();
+    struct message * received_message = create_message_frame(0,0,0);
     int bytes_received;
     
     //printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
@@ -98,11 +98,11 @@ void send_message(int sockfd, struct message * message_to_send){
     }
 }
 
-struct message * create_message_frame(){
+struct message * create_message_frame(int len, enum message_type type, int * d){
     struct message * m = malloc(sizeof(struct message));
-    m->length = 0;
-    m->type = 0;
-    m->data = (int *)0;
+    m->length = len;
+    m->type = type;
+    m->data = (int *)d;
     return m;
 }
 

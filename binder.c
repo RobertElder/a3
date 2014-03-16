@@ -139,9 +139,7 @@ int main(void) {
                 printf("Got a message to terminate from a client.\n");
                 fflush(stdout);
                 /*  Terminate all the waiting servers */
-                struct message * out_msg = create_message_frame();
-                out_msg->length = 0;
-                out_msg->type = SERVER_TERMINATE;
+                struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
 		int i;
 		for(i = 0; i < num_server_sockets; i++){
                     send_message(server_sockets[i], out_msg);
