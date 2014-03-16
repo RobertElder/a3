@@ -29,7 +29,7 @@ struct message * recv_message(int sockfd){
     assert(bytes_received != 0 && "Connection was closed by remote host.");
     /*  Probably never going to happen, but make sure we got the whole int */
     assert(bytes_received == sizeof(int));
-    received_message->length = ntohs(received_message->length);
+    received_message->length = ntohl(received_message->length);
     /*  If this assertion fails, then there is probably a problem with the messaging format */
     assert(received_message->length < 1000 && received_message->length  > -1);
     /*  The received_message data should be a bunch of ints, otherwise how do we convert to host order? */
@@ -43,7 +43,7 @@ struct message * recv_message(int sockfd){
     assert(bytes_received != 0 && "Connection was closed by remote host.");
     /*  Probably never going to happen, but make sure we got the whole int */
     assert(bytes_received == sizeof(int));
-    received_message->type = ntohs(received_message->type);
+    received_message->type = ntohl(received_message->type);
 
     if(received_message->length > 0){
         //printf("Attempting to receive message data of length %d...\n",received_message->length);
@@ -56,7 +56,7 @@ struct message * recv_message(int sockfd){
         assert(bytes_received == received_message->length);
         int i;
         for(i = 0; i < received_message->length % sizeof(int); i++){
-            received_message->data[i] = ntohs(received_message->data[i]);
+            received_message->data[i] = ntohl(received_message->data[i]);
         }
     }
     return received_message;
@@ -64,8 +64,8 @@ struct message * recv_message(int sockfd){
 
 
 void send_message(int sockfd, struct message * message_to_send){
-    int message_length = htons(message_to_send->length);
-    int message_type = htons(message_to_send->type);
+    int message_length = htonl(message_to_send->length);
+    int message_type = htonl(message_to_send->type);
     int bytes_sent;
     
     //printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
@@ -87,7 +87,7 @@ void send_message(int sockfd, struct message * message_to_send){
 
     int i;
     for(i = 0; i < message_to_send->length % sizeof(int); i++){
-        message_to_send->data[i] = htons(message_to_send->data[i]);
+        message_to_send->data[i] = htonl(message_to_send->data[i]);
     }
 
     if(message_to_send->length > 0){
