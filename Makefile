@@ -1,4 +1,6 @@
 FLAGS=-Wall -Werror -g
+test: client binder server
+	/bin/bash do-test.sh
 librpc.a: librpc.o
 	ar rcs librpc.a librpc.o
 messages.o:  messages.c messages.h
@@ -15,8 +17,6 @@ server_function_skels.o: server_function_skels.h server_function_skels.c
 	gcc $(FLAGS) -c -o server_function_skels.o server_function_skels.c
 server: server.c server_functions.o server_function_skels.o librpc.a messages.o
 	gcc $(FLAGS) -L. server.c server_functions.o server_function_skels.o messages.o -lrpc -o server
-test: client binder server
-	/bin/bash do-test.sh
 clean:
 	rm *.o *.a client binderoutput binder server
 
