@@ -13,13 +13,18 @@
 #include "global_state.h"
 #include "messages.h"
 #include "rpc.h"
+
+#define BACKLOG 10     
+
+
 /*  Declared in global_state.h */
 int server_to_binder_sockfd;
 const char * context_str;
 
 int server_max_fd;
-fd_set server_client_fds;
+fd_set server_connection_fds;
 fd_set server_listener_fds;
+struct addrinfo * server_to_client_addrinfo;
 
 int server_to_binder_setup(char * port, char * address){
     struct addrinfo hints, *servinfo;
@@ -53,8 +58,73 @@ int server_to_binder_setup(char * port, char * address){
     return 0;
 }
 
-void server_to_clients_setup(){
+int server_to_clients_setup(){
+    int sockfd;
+    struct addrinfo hints, *servinfo;
+    int yes=1;
+    int rv;
 
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    if ((rv = getaddrinfo(NULL, "0", &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+
+    for(server_to_client_addrinfo = servinfo; server_to_client_addrinfo  != NULL; server_to_client_addrinfo = server_to_client_addrinfo->ai_next) {
+        if ((sockfd = socket(server_to_client_addrinfo->ai_family, server_to_client_addrinfo->ai_socktype,
+                server_to_client_addrinfo->ai_protocol)) == -1) {
+            perror("server: socket");
+            continue;
+        }
+
+        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+            perror("setsockopt");
+            exit(1);
+        }
+
+        if (bind(sockfd, server_to_client_addrinfo->ai_addr, server_to_client_addrinfo->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("server: bind");
+            continue;
+        }
+
+	socklen_t len = sizeof(*(server_to_client_addrinfo->ai_addr));
+	if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1){
+	    perror("getsockname");
+	}else{
+	    char * hostname = get_fully_qualified_hostname();
+            printf("SERVER_ADDRESS %s\n", hostname);
+            printf("SERVER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
+            free(hostname);
+	    /* Flush the output so we can read it from the file */
+	    fflush(stdout);
+	}
+
+        break;
+    }
+
+    if (server_to_client_addrinfo == NULL)  {
+        fprintf(stderr, "server: failed to bind\n");
+        return 2;
+    }
+
+    freeaddrinfo(servinfo);
+
+    if (listen(sockfd, BACKLOG) == -1) {
+        perror("listen");
+        exit(1);
+    }
+
+    FD_SET(sockfd, &server_connection_fds);
+    FD_SET(sockfd, &server_listener_fds);
+    if(sockfd > server_max_fd)
+        server_max_fd = sockfd;
+
+    return 0;
 }
 
 int rpcInit(){
@@ -69,7 +139,7 @@ int rpcInit(){
      * The return value is 0 for success, negative if any part of the initialization sequence was unsuccessful
      * (using dirent negative values for dirent error conditions would be a good idea).*/
 
-    FD_ZERO(&server_client_fds);
+    FD_ZERO(&server_connection_fds);
     FD_ZERO(&server_listener_fds);
     char * port = getenv ("SERVER_PORT");
     char * address = getenv ("SERVER_ADDRESS");
@@ -80,7 +150,7 @@ int rpcInit(){
         print_with_flush(context_str, "Failed to setup connection to binder.\n");
     }
     /*  We want to continue to listen for messages from the binder */
-    FD_SET(server_to_binder_sockfd, &server_client_fds);
+    FD_SET(server_to_binder_sockfd, &server_connection_fds);
     server_max_fd = server_to_binder_sockfd;
 
     server_to_clients_setup();
@@ -182,7 +252,7 @@ int rpcExecute(){
     destroy_message_frame_and_data(out_msg);
 
     while(1) {
-        struct message_and_fd m_and_fd = multiplexed_recv_message(&server_max_fd, &server_client_fds, &server_listener_fds);
+        struct message_and_fd m_and_fd = multiplexed_recv_message(&server_max_fd, &server_connection_fds, &server_listener_fds);
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_TERMINATE:{

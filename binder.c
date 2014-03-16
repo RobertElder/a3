@@ -21,11 +21,6 @@
 
 #define CONTEXT "Binder"
 
-void sigchld_handler(int s)
-{
-    while(waitpid(-1, NULL, WNOHANG) > 0);
-}
-
 void *get_in_addr(struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
@@ -46,7 +41,6 @@ int main(void) {
     int * server_sockets = (int)0;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
-    struct sigaction sa;
     int yes=1;
     int rv;
 
@@ -115,14 +109,6 @@ int main(void) {
     FD_SET(sockfd, &client_fds);
     FD_SET(sockfd, &listener_fds);
     max_fd = sockfd;
-
-    sa.sa_handler = sigchld_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
-    }
 
     while(1) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(&max_fd, &client_fds, &listener_fds);
