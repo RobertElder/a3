@@ -172,6 +172,7 @@ char * get_fully_qualified_hostname(){
     /*  Caller is responsible for freeing memory returned */
     int buflen = HOSTNAME_BUFFER_LENGTH;
     char * buffer = malloc(buflen);
+    memset(buffer,0,HOSTNAME_BUFFER_LENGTH);
     struct hostent *hp;
     gethostname(buffer, buflen-1);
     hp = gethostbyname(buffer);

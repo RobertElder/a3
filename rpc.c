@@ -26,6 +26,8 @@ fd_set server_connection_fds;
 fd_set server_listener_fds;
 struct addrinfo * server_to_client_addrinfo;
 
+struct addrinfo * client_sock_servinfo;
+
 int server_to_binder_setup(char * port, char * address){
     struct addrinfo hints, *servinfo;
     int rv;
@@ -55,12 +57,13 @@ int server_to_binder_setup(char * port, char * address){
         fprintf(stderr, "Server: failed to connect\n");
         return 1;
     }
+    freeaddrinfo(servinfo);
     return 0;
 }
 
 int server_to_clients_setup(){
     int sockfd;
-    struct addrinfo hints, *servinfo;
+    struct addrinfo hints;
     int yes=1;
     int rv;
 
@@ -69,12 +72,12 @@ int server_to_clients_setup(){
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    if ((rv = getaddrinfo(NULL, "0", &hints, &servinfo)) != 0) {
+    if ((rv = getaddrinfo(NULL, "0", &hints, &client_sock_servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         return 1;
     }
 
-    for(server_to_client_addrinfo = servinfo; server_to_client_addrinfo  != NULL; server_to_client_addrinfo = server_to_client_addrinfo->ai_next) {
+    for(server_to_client_addrinfo = client_sock_servinfo; server_to_client_addrinfo  != NULL; server_to_client_addrinfo = server_to_client_addrinfo->ai_next) {
         if ((sockfd = socket(server_to_client_addrinfo->ai_family, server_to_client_addrinfo->ai_socktype,
                 server_to_client_addrinfo->ai_protocol)) == -1) {
             perror("server: socket");
@@ -112,7 +115,6 @@ int server_to_clients_setup(){
         return 2;
     }
 
-    freeaddrinfo(servinfo);
 
     if (listen(sockfd, BACKLOG) == -1) {
         perror("listen");
@@ -263,15 +265,16 @@ int rpcExecute(){
             case SERVER_TERMINATE:{
                 print_with_flush(context_str, "Got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
-                return 0;
+                goto exit;
                 break;
 	    }default:{
 	        assert(0);
 	    }
 	}
-        destroy_message_frame_and_data(in_msg);
     }
 
+exit:
+    freeaddrinfo(client_sock_servinfo);
     //printf("rpcExecute has not been implemented yet.\n");
     return -1;
 };
