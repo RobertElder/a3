@@ -218,7 +218,7 @@ int rpcCall(char* name, int* argTypes, void** args){
     }
 
     int msg_length = FUNCTION_NAME_LENGTH + sizeof(int);
-    char * buffer = malloc(msg_length);
+    char * buffer = (char*)malloc(msg_length);
     memset(buffer, 0, msg_length);
     memcpy(buffer, name, FUNCTION_NAME_LENGTH);
 
@@ -240,7 +240,7 @@ int rpcCall(char* name, int* argTypes, void** args){
     assert(msg->type == LOC_SUCCESS);
 
     // retrieve server identifier and port from the message
-    struct location_msg loc;
+    struct location loc;
     memcpy(&loc, msg->data, sizeof(loc));
     fprintf(stderr, "Received hostname: %s\n", loc.hostname);
 
@@ -286,7 +286,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     meaning that the server function execution failed (for example, wrong arguments). In this case,
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
-    char * buffer = malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
+    char * buffer = (char*)malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
 
     char * hostname = get_fully_qualified_hostname();
     int port = get_port_from_addrinfo(server_to_client_addrinfo);

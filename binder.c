@@ -32,7 +32,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 void add_server(int ** server_sockets, int * num_server_sockets, int server_socket){
    *num_server_sockets = (*num_server_sockets) + 1;
-   *server_sockets = realloc(*server_sockets, (*num_server_sockets) * sizeof(int));
+   *server_sockets = (int*)realloc(*server_sockets, (*num_server_sockets) * sizeof(int));
    (*server_sockets)[(*num_server_sockets) - 1] = server_socket;
 }
 
@@ -61,7 +61,7 @@ int main(void) {
         return 1;
     }
 
-    for(p = servinfo; p != NULL; p = p->ai_next) {
+    for (p = servinfo; p != NULL; p = p->ai_next) {
         if ((sockfd = socket(p->ai_family, p->ai_socktype,
                 p->ai_protocol)) == -1) {
             perror("server: socket");
@@ -79,18 +79,17 @@ int main(void) {
             continue;
         }
 
-	socklen_t len = sizeof(*(p->ai_addr));
-	if (getsockname(sockfd, ((struct sockaddr *)p->ai_addr), &len) == -1){
-	    perror("getsockname");
-	}else{
-	    char * hostname = get_fully_qualified_hostname();
+    	socklen_t len = sizeof(*(p->ai_addr));
+    	if (getsockname(sockfd, ((struct sockaddr *)p->ai_addr), &len) == -1){
+    	    perror("getsockname");
+    	} else {
+    	    char * hostname = get_fully_qualified_hostname();
             printf("SERVER_ADDRESS %s\n", hostname);
             printf("SERVER_PORT %d\n", get_port_from_addrinfo(p));
             free(hostname);
-	    /* Flush the output so we can read it from the file */
-	    fflush(stdout);
-	}
-
+    	    /* Flush the output so we can read it from the file */
+    	    fflush(stdout);
+    	}
         break;
     }
 
@@ -118,9 +117,12 @@ int main(void) {
                 add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
 	        } case SERVER_REGISTER: {
-                int port;
-                memcpy(&port, &(((char *)in_msg->data)[HOSTNAME_BUFFER_LENGTH]), sizeof(int));
-                print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", (char *)in_msg->data, port);
+                struct location loc;
+                memcpy(&loc, in_msg->data, sizeof(loc));
+
+                print_with_flush(CONTEXT,
+                    "Got a register message from server at %s, port %d.\n",
+                    loc.hostname, loc.port);
                 break;
 	        } case BINDER_TERMINATE: {
                 print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
@@ -143,21 +145,20 @@ int main(void) {
                 return 0;
                 break;
     	    } case LOC_REQUEST: {
-                struct location_msg * loc = malloc(sizeof(struct location_msg));
+                struct location * loc = (struct location*)malloc(sizeof(struct location));
                 char hostname[HOSTNAME_BUFFER_LENGTH] = "test";
                 memcpy(&(loc->hostname), hostname, HOSTNAME_BUFFER_LENGTH);
                 loc->port = 10;
 
                 struct message * out_msg = create_message_frame(
-                    sizeof(struct location_msg), LOC_SUCCESS, (int*)loc);
+                    sizeof(struct location), LOC_SUCCESS, (int*)loc);
                 send_message(m_and_fd.fd, out_msg);
                 destroy_message_frame_and_data(out_msg);
                 break;
-
             } default: {
     	        assert(0);
     	    }
-	}
+	    }
         destroy_message_frame_and_data(in_msg);
     }
 

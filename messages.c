@@ -20,7 +20,7 @@ struct message * recv_message(int sockfd){
     * Caller is required to de-allocate the pointer to the message, and the message data
     */
 
-    struct message * received_message = create_message_frame(0,0,0);
+    struct message * received_message = create_message_frame(0,(enum message_type)0,0);
     int bytes_received;
 
     //printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
@@ -48,7 +48,7 @@ struct message * recv_message(int sockfd){
 
     /*  Probably never going to happen, but make sure we got the whole int */
     assert(bytes_received == sizeof(int));
-    received_message->type = ntohl(received_message->type);
+    received_message->type = (enum message_type)ntohl(received_message->type);
 
     if(received_message->length > 0){
         //printf("Attempting to receive message data of length %d...\n",received_message->length);
@@ -60,7 +60,7 @@ struct message * recv_message(int sockfd){
         /*  Probably never going to happen, but make sure we got the whole int */
         assert(bytes_received == received_message->length);
 
-        int i;
+        u_int i;
         for (i = 0; i < received_message->length % sizeof(int); i++) {
             received_message->data[i] = ntohl(received_message->data[i]);
         }
@@ -90,7 +90,7 @@ void send_message(int sockfd, struct message * message_to_send){
     /*  The received_message data should be a bunch of ints, otherwise how do we convert to host order? */
     assert(message_to_send->length % sizeof(int) == 0);
 
-    int i;
+    u_int i;
     for(i = 0; i < message_to_send->length % sizeof(int); i++){
         message_to_send->data[i] = htonl(message_to_send->data[i]);
     }
@@ -106,7 +106,7 @@ void send_message(int sockfd, struct message * message_to_send){
 }
 
 struct message * create_message_frame(int len, enum message_type type, int * d){
-    struct message * m = malloc(sizeof(struct message));
+    struct message * m = (struct message*)malloc(sizeof(struct message));
     m->length = len;
     m->type = type;
     m->data = (int *)d;
@@ -175,7 +175,7 @@ void print_with_flush(const char * context, const char * message, ...){
 char * get_fully_qualified_hostname(){
     /*  Caller is responsible for freeing memory returned */
     int buflen = HOSTNAME_BUFFER_LENGTH;
-    char * buffer = malloc(buflen);
+    char * buffer = (char*)malloc(buflen);
     memset(buffer,0,HOSTNAME_BUFFER_LENGTH);
     struct hostent *hp;
     gethostname(buffer, buflen-1);

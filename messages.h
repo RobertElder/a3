@@ -31,7 +31,7 @@ struct message_and_fd{
     int fd;
 };
 
-struct location_msg {
+struct location {
     char hostname[HOSTNAME_BUFFER_LENGTH];
     int port;
 };
