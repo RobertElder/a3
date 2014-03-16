@@ -151,6 +151,7 @@ int main(void) {
                 struct message * out_msg = create_message_frame(
                     sizeof(struct location_msg), LOC_SUCCESS, (int*)loc);
                 send_message(m_and_fd.fd, out_msg);
+                destroy_message_frame_and_data(out_msg);
                 break;
 
             } default: {

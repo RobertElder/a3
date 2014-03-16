@@ -7,7 +7,8 @@
    fun:__nss_database_lookup
    fun:gaih_inet
    fun:getaddrinfo
-   fun:rpcTerminate
+   fun:binder_socket_setup
+   fun:rpcCall
    fun:main
 }
 {
@@ -19,20 +20,7 @@
    fun:__nss_database_lookup
    fun:gaih_inet
    fun:getaddrinfo
-   fun:server_to_binder_setup
+   fun:binder_socket_setup
    fun:rpcInit
-   fun:main
-}
-{
-   insert_a_suppression_name_here_3
-   Memcheck:Leak
-   fun:malloc
-   fun:nss_parse_service_list
-   fun:nss_parse_file.constprop.2
-   fun:__nss_database_lookup
-   fun:__nss_hosts_lookup2
-   fun:gethostbyname_r@@GLIBC_2.2.5
-   fun:gethostbyname
-   fun:get_fully_qualified_hostname
    fun:main
 }
