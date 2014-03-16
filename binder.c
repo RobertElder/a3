@@ -98,7 +98,6 @@ int main(void) {
         fprintf(stderr, "server: failed to bind\n");
         return 2;
     }
-
     freeaddrinfo(servinfo);
 
     if (listen(sockfd, BACKLOG) == -1) {
@@ -139,6 +138,7 @@ int main(void) {
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
                 print_with_flush(CONTEXT, "Exiting binder...\n");
+                free(server_sockets);
                 return 0;
                 break;
 	    }default:{
