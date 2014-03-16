@@ -103,8 +103,8 @@ int server_to_clients_setup(){
 	    perror("getsockname");
 	}else{
 	    char * hostname = get_fully_qualified_hostname();
-        printf("SERVER_ADDRESS %s\n", hostname);
-        printf("SERVER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
+        printf("BINDER_ADDRESS %s\n", hostname);
+        printf("BINDER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
         free(hostname);
 	    /* Flush the output so we can read it from the file */
 	    fflush(stdout);
@@ -147,10 +147,10 @@ int rpcInit(){
     FD_ZERO(&server_connection_fds);
     FD_ZERO(&server_listener_fds);
     // TODO: should be BINDER port and address
-    char * port = getenv ("SERVER_PORT");
-    char * address = getenv ("SERVER_ADDRESS");
-    //printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
-    //printf("Running rpcInit for server with binder SERVER_PORT: %s\n", port);
+    char * port = getenv ("BINDER_PORT");
+    char * address = getenv ("BINDER_ADDRESS");
+    //printf("Running rpcInit for server with binder BINDER_ADDRESS: %s\n", address);
+    //printf("Running rpcInit for server with binder BINDER_PORT: %s\n", port);
 
     server_to_binder_sockfd = binder_socket_setup(port, address);
     if (server_to_binder_sockfd < 0) {
@@ -209,8 +209,8 @@ int rpcCall(char* name, int* argTypes, void** args){
 
     // send a location req msg to the binder
     // TODO: should be BINDER port and address
-    char * port = getenv ("SERVER_PORT");
-    char * address = getenv ("SERVER_ADDRESS");
+    char * port = getenv ("BINDER_PORT");
+    char * address = getenv ("BINDER_ADDRESS");
     int binder_sockfd = binder_socket_setup(port, address);
     if (binder_sockfd < 0) {
         fprintf(stderr, "Failed to create a binder socket.\n");
@@ -341,10 +341,10 @@ int rpcTerminate(){
      * the servers, which are all expected to gracefully terminate. The binder should terminate after all
      * servers have terminated. Clients are expected to terminate on their own cognizance. */
 
-    char * port = getenv ("SERVER_PORT");
-    char * address = getenv ("SERVER_ADDRESS");
-    //printf("Running rpcTerminate for client with binder SERVER_ADDRESS: %s\n", address);
-    //printf("Running rpcTerminate for client with binder SERVER_PORT: %s\n", port);
+    char * port = getenv ("BINDER_PORT");
+    char * address = getenv ("BINDER_ADDRESS");
+    //printf("Running rpcTerminate for client with binder BINDER_ADDRESS: %s\n", address);
+    //printf("Running rpcTerminate for client with binder BINDER_PORT: %s\n", port);
 
     struct addrinfo hints, *servinfo;
     int rv;

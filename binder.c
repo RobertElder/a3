@@ -84,8 +84,8 @@ int main(void) {
     	    perror("getsockname");
     	} else {
     	    char * hostname = get_fully_qualified_hostname();
-            printf("SERVER_ADDRESS %s\n", hostname);
-            printf("SERVER_PORT %d\n", get_port_from_addrinfo(p));
+            printf("BINDER_ADDRESS %s\n", hostname);
+            printf("BINDER_PORT %d\n", get_port_from_addrinfo(p));
             free(hostname);
     	    /* Flush the output so we can read it from the file */
     	    fflush(stdout);

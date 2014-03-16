@@ -22,10 +22,10 @@ int main() {
   sprintf(name_buffer, "Client %d", getpid());
   context_str = name_buffer;
 
-  char * port = getenv ("SERVER_PORT");
-  char * address = getenv ("SERVER_ADDRESS");
-  print_with_flush(context_str, "Starting client with SERVER_ADDRESS: %s\n", address);
-  print_with_flush(context_str, "Starting client with SERVER_PORT: %s\n", port);
+  char * port = getenv ("BINDER_PORT");
+  char * address = getenv ("BINDER_ADDRESS");
+  print_with_flush(context_str, "Starting client with BINDER_ADDRESS: %s\n", address);
+  print_with_flush(context_str, "Starting client with BINDER_PORT: %s\n", port);
 
   /* prepare the arguments for f0 */
   int a0 = 5;
