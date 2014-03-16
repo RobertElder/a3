@@ -132,6 +132,9 @@ int main(void) {
                 print_with_flush(CONTEXT, "Got a hello message from a server.\n");
                 add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
+	    }case SERVER_REGISTER:{
+                print_with_flush(CONTEXT, "Got a register message from server at %s.\n", (char *)in_msg->data);
+                break;
 	    }case BINDER_TERMINATE:{
                 print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
@@ -148,7 +151,6 @@ int main(void) {
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
                 print_with_flush(CONTEXT, "Exiting binder...\n");
-                fflush(stdout);
                 return 0;
                 break;
 	    }default:{
