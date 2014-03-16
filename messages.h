@@ -9,8 +9,8 @@
 enum message_type {
     SERVER_HELLO,
     SERVER_TERMINATE,
-    SERVER_TERMINATE_ACKNOWLEDGED,
-    BINDER_TERMINATE
+    BINDER_TERMINATE,
+    SERVER_REGISTER
 };
 
 struct message{
@@ -31,3 +31,5 @@ struct message * create_message_frame(int, enum message_type, int *);
 void destroy_message_frame_and_data(struct message *);
 struct message_and_fd multiplexed_recv_message(int *, fd_set *, fd_set *);
 void print_with_flush(const char * , const char * , ...);
+char * get_fully_qualified_hostname();
+int get_port_from_addrinfo(struct addrinfo *);

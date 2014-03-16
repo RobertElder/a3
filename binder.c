@@ -89,12 +89,10 @@ int main(void) {
 	if (getsockname(sockfd, ((struct sockaddr *)p->ai_addr), &len) == -1){
 	    perror("getsockname");
 	}else{
-	    char hostname[100];
-            struct hostent *hp;
-	    gethostname(hostname, 99);
-            hp = gethostbyname(hostname);
-            printf("SERVER_ADDRESS %s\n", hp->h_name);
-            printf("SERVER_PORT %d\n", ntohs(((struct sockaddr_in*)p->ai_addr)->sin_port));
+	    char * hostname = get_fully_qualified_hostname();
+            printf("SERVER_ADDRESS %s\n", hostname);
+            printf("SERVER_PORT %d\n", get_port_from_addrinfo(p));
+            free(hostname);
 	    /* Flush the output so we can read it from the file */
 	    fflush(stdout);
 	}

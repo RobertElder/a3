@@ -167,3 +167,19 @@ void print_with_flush(const char * context, const char * message, ...){
     fflush(stdout);
     va_end(va);
 }
+
+char * get_fully_qualified_hostname(){
+    /*  Caller is responsible for freeing memory returned */
+    int buflen = 300;
+    char * buffer = malloc(buflen);
+    struct hostent *hp;
+    gethostname(buffer, buflen-1);
+    hp = gethostbyname(buffer);
+    sprintf(buffer, "%s", hp->h_name);
+    return buffer;
+}
+
+int get_port_from_addrinfo(struct addrinfo * a){
+    assert(a && a->ai_addr);
+    return ntohs(((struct sockaddr_in*)a->ai_addr)->sin_port);
+}
