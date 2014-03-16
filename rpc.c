@@ -219,6 +219,7 @@ int rpcCall(char* name, int* argTypes, void** args){
 
     int msg_length = FUNCTION_NAME_LENGTH + sizeof(int);
     char * buffer = malloc(msg_length);
+    memset(buffer, 0, msg_length);
     memcpy(buffer, name, FUNCTION_NAME_LENGTH);
 
     struct message * out_msg = create_message_frame(
@@ -288,7 +289,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     char * buffer = malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
 
     char * hostname = get_fully_qualified_hostname();
-    int port = 12;//get_port_from_addrinfo(server_to_client_addrinfo);
+    int port = get_port_from_addrinfo(server_to_client_addrinfo);
     memcpy(buffer, hostname, HOSTNAME_BUFFER_LENGTH);
     memcpy(&(buffer[HOSTNAME_BUFFER_LENGTH]), &port, sizeof(int));
 
