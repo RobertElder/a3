@@ -15,7 +15,7 @@
 
 #define CHAR_ARRAY_LENGTH 100
 
-const char * context_str;
+extern char * context_str;
 
 int main() {
   char name_buffer[500];
@@ -100,7 +100,7 @@ int main() {
   args3[0] = (void *)a3;
 
   /* prepare the arguemtns for f4 */
-  char *a4 = "non_exist_file_to_be_printed";
+  const char *a4 = "non_exist_file_to_be_printed";
   int count4 = 1;
   int argTypes4[count4 + 1];
   void **args4;
@@ -112,7 +112,7 @@ int main() {
   args4[0] = (void *)a4;
 
   /* rpcCalls */
-  int s0 = rpcCall("f0", argTypes0, args0);
+  int s0 = rpcCall((char *)"f0", argTypes0, args0);
   /* test the return f0 */
   print_with_flush(context_str, "EXPECTED return of f0 is: %d\n", a0 + b0);
   if (s0 >= 0) { 
@@ -124,7 +124,7 @@ int main() {
   free(args0);
 
 
-  int s1 = rpcCall("f1", argTypes1, args1);
+  int s1 = rpcCall((char *)"f1", argTypes1, args1);
   /* test the return of f1 */
   print_with_flush(context_str, "EXPECTED return of f1 is: %ld\n", a1 + b1 * c1 - d1);
   if (s1 >= 0) { 
@@ -136,7 +136,7 @@ int main() {
   free(args1);
 
 
-  int s2 = rpcCall("f2", argTypes2, args2);
+  int s2 = rpcCall((char *)"f2", argTypes2, args2);
   /* test the return of f2 */
   print_with_flush(context_str, "EXPECTED return of f2 is: 31234\n");
   if (s2 >= 0) {
@@ -148,7 +148,7 @@ int main() {
   free(args2);
 
 
-  int s3 = rpcCall("f3", argTypes3, args3);
+  int s3 = rpcCall((char *)"f3", argTypes3, args3);
   /* test the return of f3 */
   print_with_flush(context_str, 
     "EXPECTED return of f3 is: 110 109 108 107 106 105 104 103 102 101 11\n"
@@ -167,7 +167,7 @@ int main() {
   } 
   free(args3);
 
-  int s4 = rpcCall("f4", argTypes4, args4);
+  int s4 = rpcCall((char *)"f4", argTypes4, args4);
   free(args4);
   /* test the return of f4 */
   print_with_flush(context_str, "calling f4 to print an non existed file on the server\n");
