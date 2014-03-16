@@ -13,6 +13,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include <stdarg.h>
+
 struct message * recv_message(int sockfd){
     /*
     * Caller is required to de-allocate the pointer to the message, and the message data
@@ -155,4 +157,13 @@ struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds
             }
 	}
     }
+}
+
+void print_with_flush(const char * context, const char * message, ...){
+    va_list va;
+    va_start(va, message);
+    printf("%s: ", context);
+    vprintf( (const char *)message, va );
+    fflush(stdout);
+    va_end(va);
 }

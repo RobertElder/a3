@@ -3,11 +3,16 @@
 #include "rpc.h"
 #include "server_function_skels.h"
 #include "global_state.h"
+#include <unistd.h>
 
 /*  Declared in global_state.h */
 int server_to_binder_sockfd;
+const char * context_str;
 
 int main(int argc, char *argv[]) {
+  char name_buffer[500];
+  sprintf(name_buffer, "Server %d", getpid());
+  context_str = name_buffer;
   /* create sockets and connect to the binder */
   rpcInit();
 

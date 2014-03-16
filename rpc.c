@@ -15,6 +15,7 @@
 #include "rpc.h"
 /*  Declared in global_state.h */
 int server_to_binder_sockfd;
+const char * context_str;
 
 int rpcInit(){
     /*The server rst calls rpcInit, which does two things. First, it creates a connection socket
@@ -70,7 +71,7 @@ int rpcInit(){
     struct message * in_msg = recv_message(server_to_binder_sockfd);
     switch (in_msg->type){
         case SERVER_TERMINATE:{
-            printf("In Server: Got a message from binder to terminate.\n");
+            print_with_flush(context_str, "Got a message from binder to terminate.\n");
             break;
         }default:{
             assert(0);

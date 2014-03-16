@@ -19,7 +19,7 @@
 
 #define BACKLOG 10     
 
-#define LINE_BUFFER_SIZE 1024
+#define CONTEXT "Binder"
 
 void sigchld_handler(int s)
 {
@@ -131,13 +131,11 @@ int main(void) {
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_HELLO:{
-                printf("Got a hello message from a server.\n");
-                fflush(stdout);
+                print_with_flush(CONTEXT, "Got a hello message from a server.\n");
                 add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
 	    }case BINDER_TERMINATE:{
-                printf("Got a message to terminate from a client.\n");
-                fflush(stdout);
+                print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
 		int i;
@@ -151,7 +149,7 @@ int main(void) {
 		FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
-                printf("Exiting binder...\n");
+                print_with_flush(CONTEXT, "Exiting binder...\n");
                 fflush(stdout);
                 return 0;
                 break;
