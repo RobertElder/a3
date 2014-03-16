@@ -17,6 +17,10 @@
 int server_to_binder_sockfd;
 const char * context_str;
 
+int server_max_fd;
+fd_set server_client_fds;
+fd_set server_listener_fds;
+
 int rpcInit(){
     /*The server rst calls rpcInit, which does two things. First, it creates a connection socket
      * to be used for accepting connections from clients. Secondly, it opens a connection to the binder,
@@ -29,6 +33,8 @@ int rpcInit(){
      * The return value is 0 for success, negative if any part of the initialization sequence was unsuccessful
      * (using dirent negative values for dirent error conditions would be a good idea).*/
 
+    FD_ZERO(&server_client_fds);
+    FD_ZERO(&server_listener_fds);
     char * port = getenv ("SERVER_PORT");
     char * address = getenv ("SERVER_ADDRESS");
     //printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
@@ -61,6 +67,8 @@ int rpcInit(){
         fprintf(stderr, "Server: failed to connect\n");
         return 0;
     }
+    FD_SET(server_to_binder_sockfd, &server_client_fds);
+    server_max_fd = server_to_binder_sockfd;
 
     //printf("rpcInit has not been implemented yet.\n");
     return -1;
@@ -152,16 +160,23 @@ int rpcExecute(){
 
     struct message * out_msg = create_message_frame(0, SERVER_HELLO, 0);
     send_message(server_to_binder_sockfd, out_msg);
-    struct message * in_msg = recv_message(server_to_binder_sockfd);
-    switch (in_msg->type){
-        case SERVER_TERMINATE:{
-            print_with_flush(context_str, "Got a message from binder to terminate.\n");
-            break;
-        }default:{
-            assert(0);
-        }
-    }
     destroy_message_frame_and_data(out_msg);
+
+    while(1) {
+        struct message_and_fd m_and_fd = multiplexed_recv_message(&server_max_fd, &server_client_fds, &server_listener_fds);
+        struct message * in_msg = m_and_fd.message;
+        switch (in_msg->type){
+            case SERVER_TERMINATE:{
+                print_with_flush(context_str, "Got a message from binder to terminate.\n");
+                destroy_message_frame_and_data(in_msg);
+                return 0;
+                break;
+	    }default:{
+	        assert(0);
+	    }
+	}
+        destroy_message_frame_and_data(in_msg);
+    }
 
     //printf("rpcExecute has not been implemented yet.\n");
     return -1;
