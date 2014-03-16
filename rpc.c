@@ -298,29 +298,35 @@ int rpcTerminate(){
 
     if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 0;
+        return 1;
     }
 
     if ((client_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
         servinfo->ai_protocol)) == -1) {
         perror("Error in client: socket");
+        freeaddrinfo(servinfo);
+        return 1;
     }
 
     if (connect(client_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
         close(client_to_binder_sockfd);
         perror("Error in client: connect");
-        exit(1);
+        freeaddrinfo(servinfo);
+        return 1;
     }
     
     if (servinfo == NULL) {
         fprintf(stderr, "Server: failed to connect\n");
-        return 0;
+        freeaddrinfo(servinfo);
+        return 1;
     }
 
     struct message * out_msg = create_message_frame(0, BINDER_TERMINATE, 0);
     send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
-    //close(client_to_binder_sockfd);
+    close(client_to_binder_sockfd);
+    
+    freeaddrinfo(servinfo);
 
     //printf("rpcTerminate has not been implemented yet.\n");
     return -1;

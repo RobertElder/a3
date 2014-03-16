@@ -9,4 +9,4 @@ for i in {1..10}
 do
     ./server &
 done
-./client
+valgrind -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./client

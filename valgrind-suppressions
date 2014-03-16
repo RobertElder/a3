@@ -1,0 +1,12 @@
+{
+   insert_a_suppression_name_here_1
+   Memcheck:Leak
+   fun:malloc
+   fun:nss_parse_service_list
+   fun:nss_parse_file.constprop.2
+   fun:__nss_database_lookup
+   fun:gaih_inet
+   fun:getaddrinfo
+   fun:rpcTerminate
+   fun:main
+}

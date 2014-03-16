@@ -121,6 +121,7 @@ int main() {
   else {
     print_with_flush(context_str, "Error: %d\n", s0);
   }
+  free(args0);
 
 
   int s1 = rpcCall("f1", argTypes1, args1);
@@ -132,6 +133,7 @@ int main() {
   else {
     print_with_flush(context_str, "Error: %d\n", s1);
   }
+  free(args1);
 
 
   int s2 = rpcCall("f2", argTypes2, args2);
@@ -143,6 +145,7 @@ int main() {
   else {
     print_with_flush(context_str, "Error: %d\n", s2);
   }
+  free(args2);
 
 
   int s3 = rpcCall("f3", argTypes3, args3);
@@ -162,8 +165,10 @@ int main() {
   else {
     print_with_flush(context_str, "Error: %d\n", s3);
   } 
+  free(args3);
 
   int s4 = rpcCall("f4", argTypes4, args4);
+  free(args4);
   /* test the return of f4 */
   print_with_flush(context_str, "calling f4 to print an non existed file on the server\n");
   print_with_flush(context_str, "EXPECTED return of f4: some integer other than 0\n");
@@ -172,6 +177,7 @@ int main() {
   /* rpcTerminate */
   //print_with_flush(context_str, "\ndo you want to terminate? y/n: ");
   //if (getchar() == 'y')
+  free(return2);
   sleep(1);
   rpcTerminate();
 
