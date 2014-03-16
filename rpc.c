@@ -21,6 +21,42 @@ int server_max_fd;
 fd_set server_client_fds;
 fd_set server_listener_fds;
 
+int server_to_binder_setup(char * port, char * address){
+    struct addrinfo hints, *servinfo;
+    int rv;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+
+    if ((server_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
+        servinfo->ai_protocol)) == -1) {
+        perror("Error in server: socket");
+        return 1;
+    }
+
+    if (connect(server_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        close(server_to_binder_sockfd);
+        perror("Error in server: connect");
+        return 1;
+    }
+    
+    if (servinfo == NULL) {
+        fprintf(stderr, "Server: failed to connect\n");
+        return 1;
+    }
+    return 0;
+}
+
+void server_to_clients_setup(){
+
+}
+
 int rpcInit(){
     /*The server rst calls rpcInit, which does two things. First, it creates a connection socket
      * to be used for accepting connections from clients. Secondly, it opens a connection to the binder,
@@ -40,35 +76,14 @@ int rpcInit(){
     //printf("Running rpcInit for server with binder SERVER_ADDRESS: %s\n", address);
     //printf("Running rpcInit for server with binder SERVER_PORT: %s\n", port);
 
-    struct addrinfo hints, *servinfo;
-    int rv;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 0;
+    if(server_to_binder_setup(port, address)){
+        print_with_flush(context_str, "Failed to setup connection to binder.\n");
     }
-
-    if ((server_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
-        servinfo->ai_protocol)) == -1) {
-        perror("Error in server: socket");
-    }
-
-    if (connect(server_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
-        close(server_to_binder_sockfd);
-        perror("Error in server: connect");
-        exit(1);
-    }
-    
-    if (servinfo == NULL) {
-        fprintf(stderr, "Server: failed to connect\n");
-        return 0;
-    }
+    /*  We want to continue to listen for messages from the binder */
     FD_SET(server_to_binder_sockfd, &server_client_fds);
     server_max_fd = server_to_binder_sockfd;
+
+    server_to_clients_setup();
 
     //printf("rpcInit has not been implemented yet.\n");
     return -1;
