@@ -147,7 +147,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
     char * hostname = get_fully_qualified_hostname();
-    struct message * out_msg = create_message_frame(300, SERVER_REGISTER, (int*)hostname);
+    struct message * out_msg = create_message_frame(HOSTNAME_BUFFER_LENGTH, SERVER_REGISTER, (int*)hostname);
     send_message(server_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);   
     return -1;

@@ -170,7 +170,7 @@ void print_with_flush(const char * context, const char * message, ...){
 
 char * get_fully_qualified_hostname(){
     /*  Caller is responsible for freeing memory returned */
-    int buflen = 300;
+    int buflen = HOSTNAME_BUFFER_LENGTH;
     char * buffer = malloc(buflen);
     struct hostent *hp;
     gethostname(buffer, buflen-1);

@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#define HOSTNAME_BUFFER_LENGTH 300
 
 enum message_type {
     SERVER_HELLO,
