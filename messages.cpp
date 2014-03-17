@@ -305,3 +305,19 @@ void deserialize_args(struct function_prototype f, char * serialized_args, void 
         offset += get_one_args_array_size(f.arg_data[i]);
     }
 }
+
+void ** create_empty_args_array(struct function_prototype f){
+    /* allocate an empty args array that looks just like the args in rpcCall */
+    void ** args = (void **)malloc(f.arg_len * sizeof(void *));
+    for(int i = 0; i < f.arg_len; i++){
+        args[i] = malloc(get_one_args_array_size(f.arg_data[i]));
+    }
+    return args;
+}
+
+void destroy_args_array(struct function_prototype f, void ** args){
+    for(int i = 0; i < f.arg_len; i++){
+        free(args[i]);
+    }
+    free(args);
+}
