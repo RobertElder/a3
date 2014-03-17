@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <assert.h>
+#include <deque>
 
 #include "messages.h"
 
@@ -20,6 +21,8 @@
 #define BACKLOG 10
 
 #define CONTEXT "Binder"
+
+using namespace std;
 
 void *get_in_addr(struct sockaddr *sa)
 {
@@ -30,15 +33,8 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void add_server(int ** server_sockets, int * num_server_sockets, int server_socket){
-   *num_server_sockets = (*num_server_sockets) + 1;
-   *server_sockets = (int*)realloc(*server_sockets, (*num_server_sockets) * sizeof(int));
-   (*server_sockets)[(*num_server_sockets) - 1] = server_socket;
-}
-
 int main(void) {
-    int num_server_sockets = 0;
-    int * server_sockets = (int)0;
+    deque<int> server_sockets;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
@@ -114,7 +110,7 @@ int main(void) {
         switch (in_msg->type) {
             case SERVER_HELLO: {
                 print_with_flush(CONTEXT, "Got a hello message from a server.\n");
-                add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
+                server_sockets.push_back(m_and_fd.fd);
                 break;
             } case SERVER_REGISTER: {
                 struct location loc;
@@ -128,11 +124,10 @@ int main(void) {
                 print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
-                int i;
-                for (i = 0; i < num_server_sockets; i++){
-                    send_message(server_sockets[i], out_msg);
-                    FD_CLR(server_sockets[i], &client_fds);
-                    close(server_sockets[i]);
+                for(deque<int>::iterator it = server_sockets.begin(); it != server_sockets.end(); it++){
+                    send_message(*it, out_msg);
+                    FD_CLR(*it, &client_fds);
+                    close(*it);
                 }
                 destroy_message_frame_and_data(out_msg);
                 /*  Clean up connection from client */
@@ -140,7 +135,6 @@ int main(void) {
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
                 print_with_flush(CONTEXT, "Exiting binder...\n");
-                free(server_sockets);
 
                 return 0;
                 break;
