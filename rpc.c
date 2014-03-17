@@ -98,17 +98,17 @@ int server_to_clients_setup(){
             continue;
         }
 
-	socklen_t len = sizeof(*(server_to_client_addrinfo->ai_addr));
-	if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1){
-	    perror("getsockname");
-	}else{
-	    char * hostname = get_fully_qualified_hostname();
-        printf("BINDER_ADDRESS %s\n", hostname);
-        printf("BINDER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
-        free(hostname);
-	    /* Flush the output so we can read it from the file */
-	    fflush(stdout);
-	}
+        socklen_t len = sizeof(*(server_to_client_addrinfo->ai_addr));
+        if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1){
+            perror("getsockname");
+        }else{
+            char * hostname = get_fully_qualified_hostname();
+            printf("BINDER_ADDRESS %s\n", hostname);
+            printf("BINDER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
+            free(hostname);
+            /* Flush the output so we can read it from the file */
+            fflush(stdout);
+        }
 
         break;
     }
@@ -322,10 +322,10 @@ int rpcExecute(){
                 destroy_message_frame_and_data(in_msg);
                 goto exit;
                 break;
-	    }default:{
-	        assert(0);
-	    }
-	}
+            }default:{
+                assert(0);
+            }
+        }
     }
 
 exit:

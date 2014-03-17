@@ -79,17 +79,17 @@ int main(void) {
             continue;
         }
 
-    	socklen_t len = sizeof(*(p->ai_addr));
-    	if (getsockname(sockfd, ((struct sockaddr *)p->ai_addr), &len) == -1){
-    	    perror("getsockname");
-    	} else {
-    	    char * hostname = get_fully_qualified_hostname();
+        socklen_t len = sizeof(*(p->ai_addr));
+        if (getsockname(sockfd, ((struct sockaddr *)p->ai_addr), &len) == -1){
+            perror("getsockname");
+        } else {
+            char * hostname = get_fully_qualified_hostname();
             printf("BINDER_ADDRESS %s\n", hostname);
             printf("BINDER_PORT %d\n", get_port_from_addrinfo(p));
             free(hostname);
-    	    /* Flush the output so we can read it from the file */
-    	    fflush(stdout);
-    	}
+            /* Flush the output so we can read it from the file */
+            fflush(stdout);
+        }
         break;
     }
 
@@ -116,7 +116,7 @@ int main(void) {
                 print_with_flush(CONTEXT, "Got a hello message from a server.\n");
                 add_server(&server_sockets, &num_server_sockets, m_and_fd.fd);
                 break;
-	        } case SERVER_REGISTER: {
+            } case SERVER_REGISTER: {
                 struct location loc;
                 memcpy(&loc, in_msg->data, sizeof(loc));
 
@@ -124,19 +124,19 @@ int main(void) {
                     "Got a register message from server at %s, port %d.\n",
                     loc.hostname, loc.port);
                 break;
-	        } case BINDER_TERMINATE: {
+            } case BINDER_TERMINATE: {
                 print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
-		        int i;
-        		for (i = 0; i < num_server_sockets; i++){
+                int i;
+                for (i = 0; i < num_server_sockets; i++){
                     send_message(server_sockets[i], out_msg);
-        		    FD_CLR(server_sockets[i], &client_fds);
+                    FD_CLR(server_sockets[i], &client_fds);
                     close(server_sockets[i]);
-        		}
+                }
                 destroy_message_frame_and_data(out_msg);
                 /*  Clean up connection from client */
-		        FD_CLR(m_and_fd.fd, &client_fds);
+                FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
                 print_with_flush(CONTEXT, "Exiting binder...\n");
@@ -144,7 +144,7 @@ int main(void) {
 
                 return 0;
                 break;
-    	    } case LOC_REQUEST: {
+            } case LOC_REQUEST: {
                 struct location * loc = (struct location*)malloc(sizeof(struct location));
                 char hostname[HOSTNAME_BUFFER_LENGTH] = "test";
                 memcpy(&(loc->hostname), hostname, HOSTNAME_BUFFER_LENGTH);
@@ -156,9 +156,9 @@ int main(void) {
                 destroy_message_frame_and_data(out_msg);
                 break;
             } default: {
-    	        assert(0);
-    	    }
-	    }
+                assert(0);
+            }
+        }
         destroy_message_frame_and_data(in_msg);
     }
 

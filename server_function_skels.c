@@ -11,9 +11,9 @@ int f0_Skel(int *argTypes, void **args) {
 int f1_Skel(int *argTypes, void **args) {
 
   *((long *)*args) = f1( *((char *)(*(args + 1))), 
-		        *((short *)(*(args + 2))),
-		        *((int *)(*(args + 3))),
-		        *((long *)(*(args + 4))) );
+        *((short *)(*(args + 2))),
+        *((int *)(*(args + 3))),
+        *((long *)(*(args + 4))) );
 
   return 0;
 }
