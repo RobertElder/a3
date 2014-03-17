@@ -55,6 +55,11 @@ struct function_prototype {
     int * arg_data;
 };
 
+struct func_loc_pair {
+    struct location loc;
+    struct function_prototype func;
+};
+
 struct message * recv_message(int);
 void send_message(int, struct message *);
 struct message * create_message_frame(int, enum message_type, int *);
@@ -65,7 +70,7 @@ void print_with_flush(const char * , const char * , ...);
 char * get_fully_qualified_hostname();
 int get_port_from_addrinfo(struct addrinfo *);
 void serialize_function_prototype(struct function_prototype, int *);
-struct function_prototype serialize_function_prototype(int *);
+struct function_prototype deserialize_function_prototype(int *);
 struct function_prototype create_function_prototype(char *, int *);  /*  Translate encapsulate in something that we can put in a vector */
 
 
