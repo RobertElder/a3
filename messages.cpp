@@ -192,3 +192,21 @@ int get_port_from_addrinfo(struct addrinfo * a){
     assert(a && a->ai_addr);
     return ntohs(((struct sockaddr_in*)a->ai_addr)->sin_port);
 }
+
+
+int * serialize_function_prototype(struct function_prototype f){
+    /*  Flattens a function prototype struct (that includes a pointer) into a variable-length buffer */
+    int * buffer = (int*)malloc(FUNCTION_NAME_LENGTH + sizeof(int) + (sizeof(int)* f.arg_len));
+    memcpy(buffer, &f.name, FUNCTION_NAME_LENGTH);
+    memcpy(&buffer[FUNCTION_NAME_LENGTH], &f.arg_len, sizeof(int));
+    memcpy(&buffer[FUNCTION_NAME_LENGTH + sizeof(int)], f.arg_data, sizeof(int) * f.arg_len);
+    return buffer;
+}
+
+struct function_prototype deserialize_function_prototype(int * buffer){
+    struct function_prototype f;
+    memcpy(&f.name, buffer, FUNCTION_NAME_LENGTH);
+    memcpy(&f.arg_len, &buffer[FUNCTION_NAME_LENGTH], sizeof(int));
+    memcpy(&f.arg_data, &buffer[FUNCTION_NAME_LENGTH + sizeof(int)], sizeof(int) * f.arg_len);
+    return f;
+}
