@@ -19,7 +19,7 @@ while [ `cat binderoutput | grep BINDER_ADDRESS | wc -l` -lt 1 ]; do :; done
 export BINDER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/BINDER_ADDRESS //'`
 export BINDER_PORT=`cat binderoutput | tail -n 1 | sed 's/BINDER_PORT //'`
 echo "Binder started..."
-for i in {1..10}
+for i in {1..1}
 do
     valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./server &
 done

@@ -64,3 +64,4 @@ char * get_fully_qualified_hostname();
 int get_port_from_addrinfo(struct addrinfo *);
 int * serialize_function_prototype(struct function_prototype);
 struct function_prototype serialize_function_prototype(int *);
+struct function_prototype create_function_prototype(char *, int *);  /*  Translate encapsulate in something that we can put in a vector */

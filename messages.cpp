@@ -198,15 +198,31 @@ int * serialize_function_prototype(struct function_prototype f){
     /*  Flattens a function prototype struct (that includes a pointer) into a variable-length buffer */
     int * buffer = (int*)malloc(FUNCTION_NAME_LENGTH + sizeof(int) + (sizeof(int)* f.arg_len));
     memcpy(buffer, &f.name, FUNCTION_NAME_LENGTH);
-    memcpy(&buffer[FUNCTION_NAME_LENGTH], &f.arg_len, sizeof(int));
-    memcpy(&buffer[FUNCTION_NAME_LENGTH + sizeof(int)], f.arg_data, sizeof(int) * f.arg_len);
+    memcpy(&buffer[FUNCTION_NAME_LENGTH / sizeof(int)], &f.arg_len, sizeof(int));
+    memcpy(&buffer[FUNCTION_NAME_LENGTH / sizeof(int) + 1], f.arg_data, sizeof(int) * f.arg_len);
     return buffer;
 }
 
 struct function_prototype deserialize_function_prototype(int * buffer){
     struct function_prototype f;
     memcpy(&f.name, buffer, FUNCTION_NAME_LENGTH);
-    memcpy(&f.arg_len, &buffer[FUNCTION_NAME_LENGTH], sizeof(int));
-    memcpy(&f.arg_data, &buffer[FUNCTION_NAME_LENGTH + sizeof(int)], sizeof(int) * f.arg_len);
+    memcpy(&f.arg_len, &buffer[FUNCTION_NAME_LENGTH/sizeof(int)], sizeof(int));
+    memcpy(&f.arg_data, &buffer[FUNCTION_NAME_LENGTH/sizeof(int) + 1], sizeof(int) * f.arg_len);
+    return f;
+}
+
+struct function_prototype create_function_prototype(char * name, int * argTypes){
+    struct function_prototype f;
+    int name_len = strlen(name);
+    assert(name_len < FUNCTION_NAME_LENGTH);
+    int i = 0;
+    while(argTypes[i]){
+        i++;
+    }
+    f.arg_len = i;
+    f.arg_data = (int*)malloc(sizeof(int) * f.arg_len);
+    memset(&f.name, 0, FUNCTION_NAME_LENGTH);
+    memcpy(&f.name, name, name_len);
+    memcpy(f.arg_data, argTypes, sizeof(int) * f.arg_len);
     return f;
 }

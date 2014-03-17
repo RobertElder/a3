@@ -217,15 +217,14 @@ int rpcCall(char* name, int* argTypes, void** args){
         return -1;
     }
 
-    int msg_length = FUNCTION_NAME_LENGTH + sizeof(int);
-    char * buffer = (char*)malloc(msg_length);
-    memset(buffer, 0, msg_length);
-    memcpy(buffer, name, FUNCTION_NAME_LENGTH);
+    struct function_prototype f = create_function_prototype(name, argTypes);
+    int * serialized_function_prototype = serialize_function_prototype(f);
+    int msg_length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * f.arg_len;
 
-    struct message * out_msg = create_message_frame(
-        msg_length, LOC_REQUEST, (int*)buffer);
+    struct message * out_msg = create_message_frame( msg_length, LOC_REQUEST, (int*)serialized_function_prototype );
     send_message(binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
+    free(f.arg_data);
 
     // receive the server location for the procedure
     struct message * msg = recv_message(binder_sockfd);
