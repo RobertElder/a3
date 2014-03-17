@@ -286,6 +286,7 @@ int rpcCall(char* name, int* argTypes, void** args){
     close(client_to_server_sockfd);
 
     int * serialized_args = (int*)serialize_args(f, args);
+    deserialize_args(f, (char *)serialized_args, args);
     free(serialized_args);
 
     free(f.arg_data);

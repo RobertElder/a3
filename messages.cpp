@@ -264,6 +264,10 @@ int get_one_args_array_size(int data){
     }
     /* Mask off last two bytes */
     int num_units = 0xFFFF & data;
+    if(num_units == 0){
+        /*  This is a special case, because 0 means scalar, which is the same as an array of one unit in terms of size. */
+        num_units = 1;
+    }
     return num_units * unit_length;
 }
 
@@ -282,13 +286,22 @@ int get_args_buffer_size(struct function_prototype f){
     }
 }
 
-void * serialize_args(struct function_prototype f, void ** args){
+int * serialize_args(struct function_prototype f, void ** args){
     /*  Will return a buffer that contains both the input and output arguments pointed to by args */
     char * buffer = (char*)malloc(get_args_buffer_size(f));
     int offset = 0;
     for(int i = 0; i < f.arg_len; i++){
-        /*  Copy one argument array in right after the last array */
-        memcpy(&buffer[offset], ((int*)args[i]), get_one_args_array_size(f.arg_data[i]));
+        memcpy(&buffer[offset], ((int**)args)[i], get_one_args_array_size(f.arg_data[i]));
+        offset += get_one_args_array_size(f.arg_data[i]);
     }
-    return buffer;
+    return (int*)buffer;
+}
+
+void deserialize_args(struct function_prototype f, char * serialized_args, void ** deserialized_args){
+    /*  De-serialize a serialized args array into a pre-allocated array with the correct array lengths (like that found in an rpcCall) */
+    int offset = 0;
+    for(int i = 0; i < f.arg_len; i++){
+        memcpy( ((int**)deserialized_args)[i], &serialized_args[offset], get_one_args_array_size(f.arg_data[i]));
+        offset += get_one_args_array_size(f.arg_data[i]);
+    }
 }

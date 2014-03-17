@@ -101,15 +101,17 @@ int main() {
 
   /* prepare the arguemtns for f4 */
   const char *a4 = "non_exist_file_to_be_printed";
+  char * lol = (char *)malloc(strlen(a4) + 1);
+  memcpy(lol, a4, strlen(a4) + 1);
   int count4 = 1;
   int argTypes4[count4 + 1];
   void **args4;
 
-  argTypes4[0] = (1 << ARG_INPUT) | (ARG_CHAR << 16) | strlen(a4);
+  argTypes4[0] = (1 << ARG_INPUT) | (ARG_CHAR << 16) | strlen(lol);
   argTypes4[1] = 0;
 
   args4 = (void **)malloc(count4 * sizeof(void *));
-  args4[0] = (void *)a4;
+  args4[0] = (void *)lol;
 
   /* rpcCalls */
   int s0 = rpcCall((char *)"f0", argTypes0, args0);
@@ -180,6 +182,7 @@ int main() {
   free(return2);
   sleep(1);
   rpcTerminate();
+  free(lol);
 
   /* end of client.c */
   return 0;

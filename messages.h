@@ -70,4 +70,5 @@ struct function_prototype create_function_prototype(char *, int *);  /*  Transla
 
 int get_one_args_array_size(int);
 int get_args_buffer_size(struct function_prototype);
-void * serialize_args(struct function_prototype, void **);
+int * serialize_args(struct function_prototype, void **);
+void deserialize_args(struct function_prototype , char * , void ** );
