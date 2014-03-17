@@ -225,7 +225,6 @@ int rpcCall(char* name, int* argTypes, void** args){
     struct message * out_msg = create_message_frame( msg_length, LOC_REQUEST, (int*)serialized_function_prototype );
     send_message(binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
-    free(f.arg_data);
 
     // receive the server location for the procedure
     struct message * msg = recv_message(binder_sockfd);
@@ -280,11 +279,16 @@ int rpcCall(char* name, int* argTypes, void** args){
         return 1;
     }
 
+    /*  Send a message saying we want to execute stuff */
     struct message * exec_msg = create_message_frame(0, EXECUTE, 0);
     send_message(client_to_server_sockfd, exec_msg);
     destroy_message_frame_and_data(exec_msg);
     close(client_to_server_sockfd);
 
+    int * serialized_args = (int*)serialize_args(f, args);
+    free(serialized_args);
+
+    free(f.arg_data);
     freeaddrinfo(servinfo);
     destroy_message_frame_and_data(msg);
 

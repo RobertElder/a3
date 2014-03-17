@@ -1,4 +1,5 @@
 #include "messages.h"
+#include "rpc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -230,4 +231,64 @@ struct function_prototype create_function_prototype(char * name, int * argTypes)
     memcpy(&f.name, name, name_len);
     memcpy(f.arg_data, argTypes, sizeof(int) * f.arg_len);
     return f;
+}
+
+int get_one_args_array_size(int data){
+    /*  Based on the data for one argument, how many bytes is the entire array for that arg? */
+
+    /*  Mask out the data type and shift it back down to the first byte */
+    int data_type = ((0xFF << 16) & data) >> 16;
+    int unit_length;
+    switch(data_type){
+        case ARG_CHAR:{
+            unit_length = sizeof(char);
+            break;
+        }case ARG_SHORT:{
+            unit_length = sizeof(short);
+            break;
+        }case ARG_INT:{
+            unit_length = sizeof(int);
+            break;
+        }case ARG_LONG:{
+            unit_length = sizeof(long);
+            break;
+        }case ARG_DOUBLE:{
+            unit_length = sizeof(double);
+            break;
+        }case ARG_FLOAT:{
+            unit_length = sizeof(float);
+            break;
+        }default:{
+            assert(0);
+        }
+    }
+    /* Mask off last two bytes */
+    int num_units = 0xFFFF & data;
+    return num_units * unit_length;
+}
+
+int get_args_buffer_size(struct function_prototype f){
+    /*  For now, just serialize both input and output arguments.  We can have a flag to do one or the other later */
+
+    int bytes_needed = 0;
+    for(int i = 0; i < f.arg_len; i++){
+        bytes_needed += get_one_args_array_size(f.arg_data[i]);
+    }
+    if(bytes_needed % sizeof(int) != 0){
+        /*  Force 4-bytes alignment */
+        return ((bytes_needed / sizeof(int)) * sizeof(int)) + sizeof(int);
+    }else{
+        return bytes_needed;
+    }
+}
+
+void * serialize_args(struct function_prototype f, void ** args){
+    /*  Will return a buffer that contains both the input and output arguments pointed to by args */
+    char * buffer = (char*)malloc(get_args_buffer_size(f));
+    int offset = 0;
+    for(int i = 0; i < f.arg_len; i++){
+        /*  Copy one argument array in right after the last array */
+        memcpy(&buffer[offset], ((int*)args[i]), get_one_args_array_size(f.arg_data[i]));
+    }
+    return buffer;
 }
