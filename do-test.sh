@@ -23,5 +23,7 @@ for i in {1..10}
 do
     valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./server &
 done
+#  Wait a couple seconds for the servers to register
+sleep 3
 valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./client
 #

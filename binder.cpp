@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <assert.h>
-#include <deque>
+#include <vector>
 
 #include "messages.h"
 
@@ -34,7 +34,8 @@ void *get_in_addr(struct sockaddr *sa)
 }
 
 int main(void) {
-    deque<int> server_sockets;
+    vector<int> server_sockets;
+    vector<struct location> server_locations;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
@@ -109,22 +110,24 @@ int main(void) {
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type) {
             case SERVER_HELLO: {
-                print_with_flush(CONTEXT, "Got a hello message from a server.\n");
+                //print_with_flush(CONTEXT, "Got a hello message from a server.\n");
                 server_sockets.push_back(m_and_fd.fd);
                 break;
             } case SERVER_REGISTER: {
                 struct location loc;
                 memcpy(&loc, in_msg->data, sizeof(loc));
 
-                print_with_flush(CONTEXT,
-                    "Got a register message from server at %s, port %d.\n",
-                    loc.hostname, loc.port);
+                //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
+                /*  TODO:
+                 *  In the future, put this into a data structure that lets us look up in O(1) by the
+                 *  name and argTypes (for when the client asks for a method location) */
+                server_locations.push_back(loc);
                 break;
             } case BINDER_TERMINATE: {
-                print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
+                //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
-                for(deque<int>::iterator it = server_sockets.begin(); it != server_sockets.end(); it++){
+                for(vector<int>::iterator it = server_sockets.begin(); it != server_sockets.end(); it++){
                     send_message(*it, out_msg);
                     FD_CLR(*it, &client_fds);
                     close(*it);
@@ -135,19 +138,15 @@ int main(void) {
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
                 print_with_flush(CONTEXT, "Exiting binder...\n");
-
                 return 0;
                 break;
             } case LOC_REQUEST: {
-                struct location * loc = (struct location*)malloc(sizeof(struct location));
-                char hostname[HOSTNAME_BUFFER_LENGTH] = "test";
-                memcpy(&(loc->hostname), hostname, HOSTNAME_BUFFER_LENGTH);
-                loc->port = 10;
-
-                struct message * out_msg = create_message_frame(
-                    sizeof(struct location), LOC_SUCCESS, (int*)loc);
+                assert(server_locations.size());
+                /*  For now just return the first server location */
+                struct location loc = server_locations.at(0);
+                struct message * out_msg = create_message_frame( sizeof(struct location), LOC_SUCCESS, (int*)&loc);
                 send_message(m_and_fd.fd, out_msg);
-                destroy_message_frame_and_data(out_msg);
+                destroy_message_frame(out_msg);
                 break;
             } default: {
                 assert(0);

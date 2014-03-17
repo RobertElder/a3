@@ -113,11 +113,15 @@ struct message * create_message_frame(int len, enum message_type type, int * d){
     return m;
 }
 
+void destroy_message_frame(struct message * m){
+    free(m);
+}
+
 void destroy_message_frame_and_data(struct message * m){
     if(m->data){
         free(m->data);
     }
-    free(m);
+    destroy_message_frame(m);
 }
 
 struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds, fd_set * listener_fds){
