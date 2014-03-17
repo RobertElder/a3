@@ -286,17 +286,18 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     meaning that the server function execution failed (for example, wrong arguments). In this case,
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
-    char * buffer = (char*)malloc(HOSTNAME_BUFFER_LENGTH + sizeof(int));
-
+    struct registration reg;
+    /*  Set the hostname */
     char * hostname = get_fully_qualified_hostname();
-    int port = get_port_from_addrinfo(server_to_client_addrinfo);
-    memcpy(buffer, hostname, HOSTNAME_BUFFER_LENGTH);
-    memcpy(&(buffer[HOSTNAME_BUFFER_LENGTH]), &port, sizeof(int));
-
-    struct message * out_msg = create_message_frame(HOSTNAME_BUFFER_LENGTH + sizeof(int), SERVER_REGISTER, (int*)buffer);
-    send_message(server_to_binder_sockfd, out_msg);
-    destroy_message_frame_and_data(out_msg);
+    memset(&reg.hostname, 0, HOSTNAME_BUFFER_LENGTH);
+    memcpy(&reg.hostname, hostname, strlen(hostname) + 1);
     free(hostname);
+    /*  Set the port */
+    reg.port = get_port_from_addrinfo(server_to_client_addrinfo);
+
+    struct message * out_msg = create_message_frame(sizeof(struct registration), SERVER_REGISTER, (int*)&reg);
+    send_message(server_to_binder_sockfd, out_msg);
+    destroy_message_frame(out_msg);
     return -1;
 };
 

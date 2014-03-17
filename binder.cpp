@@ -35,7 +35,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(void) {
     vector<int> server_sockets;
-    vector<struct location> server_locations;
+    vector<struct registration> server_registrations;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
@@ -114,14 +114,14 @@ int main(void) {
                 server_sockets.push_back(m_and_fd.fd);
                 break;
             } case SERVER_REGISTER: {
-                struct location loc;
-                memcpy(&loc, in_msg->data, sizeof(loc));
+                struct registration reg;
+                memcpy(&reg, in_msg->data, sizeof(struct registration));
 
                 //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
                 /*  TODO:
                  *  In the future, put this into a data structure that lets us look up in O(1) by the
                  *  name and argTypes (for when the client asks for a method location) */
-                server_locations.push_back(loc);
+                server_registrations.push_back(reg);
                 break;
             } case BINDER_TERMINATE: {
                 //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
@@ -141,9 +141,12 @@ int main(void) {
                 return 0;
                 break;
             } case LOC_REQUEST: {
-                assert(server_locations.size());
+                assert(server_registrations.size());
                 /*  For now just return the first server location */
-                struct location loc = server_locations.at(0);
+                struct registration reg = server_registrations.at(0);
+                struct location loc;
+                memcpy(&loc.hostname, &reg.hostname, HOSTNAME_BUFFER_LENGTH);
+                loc.port = reg.port;
                 struct message * out_msg = create_message_frame( sizeof(struct location), LOC_SUCCESS, (int*)&loc);
                 send_message(m_and_fd.fd, out_msg);
                 destroy_message_frame(out_msg);

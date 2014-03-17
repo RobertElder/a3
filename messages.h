@@ -31,9 +31,20 @@ struct message_and_fd{
     int fd;
 };
 
+struct registration {
+    char hostname[HOSTNAME_BUFFER_LENGTH];
+    int port;
+    /*  TODO:  add the*/
+};
+
 struct location {
     char hostname[HOSTNAME_BUFFER_LENGTH];
     int port;
+};
+
+struct location_request {
+    /*  TODO:  add the*/
+    int asdfasdf;
 };
 
 struct message * recv_message(int);
