@@ -218,13 +218,13 @@ int rpcCall(char* name, int* argTypes, void** args){
     }
 
     struct function_prototype f = create_function_prototype(name, argTypes);
-    int msg_length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * f.arg_len;
-    int * serialized_function_prototype = (int *)malloc(msg_length);
+    int function_prorotype_len = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * f.arg_len;
+    int * serialized_function_prototype = (int *)malloc(function_prorotype_len);
     serialize_function_prototype(f,serialized_function_prototype );
 
-    struct message * out_msg = create_message_frame( msg_length, LOC_REQUEST, (int*)serialized_function_prototype );
+    struct message * out_msg = create_message_frame( function_prorotype_len , LOC_REQUEST, (int*)serialized_function_prototype );
     send_message(binder_sockfd, out_msg);
-    destroy_message_frame_and_data(out_msg);
+    destroy_message_frame(out_msg);
 
     // receive the server location for the procedure
     struct message * msg = recv_message(binder_sockfd);
@@ -283,19 +283,24 @@ int rpcCall(char* name, int* argTypes, void** args){
     struct message * exec_msg = create_message_frame(0, EXECUTE, 0);
     send_message(client_to_server_sockfd, exec_msg);
     destroy_message_frame_and_data(exec_msg);
-    close(client_to_server_sockfd);
 
+    /*  Send a message with the function prorotype */
+    struct message * fcn_msg = create_message_frame(function_prorotype_len, FUNCTION_PROTOTYPE, serialized_function_prototype);
+    send_message(client_to_server_sockfd, fcn_msg);
+    destroy_message_frame_and_data(fcn_msg);
+
+    /*  Send all the arguments */
     int * serialized_args = (int*)serialize_args(f, args);
-    void ** args_temp = create_empty_args_array(f);
-    deserialize_args(f, (char *)serialized_args, args_temp);
-    destroy_args_array(f, args_temp);
-    free(serialized_args);
+    struct message * args_msg = create_message_frame(get_args_buffer_size(f), FUNCTION_ARGS, serialized_args);
+    send_message(client_to_server_sockfd, args_msg);
+    destroy_message_frame_and_data(args_msg);
 
     free(f.arg_data);
     freeaddrinfo(servinfo);
     destroy_message_frame_and_data(msg);
 
     print_with_flush(context_str, "Called %s port %d.\n",loc.hostname, loc.port);
+    close(client_to_server_sockfd);
     // return 0 after sending the req
     return -1;
 };
@@ -383,12 +388,19 @@ int rpcExecute(){
                 break;
             }case EXECUTE:{
                 print_with_flush(context_str, "Got a message from a client to execute.\n");
-                destroy_message_frame_and_data(in_msg);
+                struct message * prototype_msg = recv_message(m_and_fd.fd);
+                print_with_flush(context_str, "Got function prototype.\n");
+                struct message * args_msg = recv_message(m_and_fd.fd);
+                print_with_flush(context_str, "Got function args.\n");
+
+                destroy_message_frame_and_data(prototype_msg);
+                destroy_message_frame_and_data(args_msg);
                 break;
             }default:{
                 assert(0);
             }
         }
+        destroy_message_frame_and_data(in_msg);
     }
 
 exit:

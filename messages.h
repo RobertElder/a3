@@ -17,7 +17,8 @@ enum message_type {
     LOC_SUCCESS,
     LOC_FAILURE,
     EXECUTE,
-    FUNCTION_PROTOTYPE
+    FUNCTION_PROTOTYPE,
+    FUNCTION_ARGS
 };
 
 struct message{

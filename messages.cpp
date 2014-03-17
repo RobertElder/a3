@@ -103,6 +103,7 @@ void send_message(int sockfd, struct message * message_to_send){
 
     if(message_to_send->length > 0){
         //printf("Attempting to send %d bytes of data...\n", message_to_send->length);
+        fflush(stdout);
         if((bytes_sent = send(sockfd, message_to_send->data, message_to_send->length, 0)) == -1){
             perror("Error in send_message sending data.\n");
         }
@@ -288,7 +289,9 @@ int get_args_buffer_size(struct function_prototype f){
 
 int * serialize_args(struct function_prototype f, void ** args){
     /*  Will return a buffer that contains both the input and output arguments pointed to by args */
-    char * buffer = (char*)malloc(get_args_buffer_size(f));
+    int size = get_args_buffer_size(f);
+    char * buffer = (char*)malloc(size);
+    memset(buffer, 0, size);
     int offset = 0;
     for(int i = 0; i < f.arg_len; i++){
         memcpy(&buffer[offset], ((int**)args)[i], get_one_args_array_size(f.arg_data[i]));

@@ -31,7 +31,7 @@ int main() {
   int a0 = 5;
   int b0 = 10;
   int count0 = 3;
-  int return0;
+  int return0 = 0;
   int argTypes0[count0 + 1];
   void **args0;
 
@@ -51,7 +51,7 @@ int main() {
   int c1 = 1000;
   long d1 = 10000;
   int count1 = 5;
-  long return1;
+  long return1 = 0;
   int argTypes1[count1 + 1];
   void **args1;
     
@@ -74,6 +74,7 @@ int main() {
   double b2 = 1234.1001;
   int count2 = 3;
   char *return2 = (char *)malloc(CHAR_ARRAY_LENGTH * sizeof(char));
+  memset(return2,0, CHAR_ARRAY_LENGTH * sizeof(char));
   int argTypes2[count2 + 1];
   void **args2;
 
