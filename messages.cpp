@@ -194,13 +194,11 @@ int get_port_from_addrinfo(struct addrinfo * a){
 }
 
 
-int * serialize_function_prototype(struct function_prototype f){
+void serialize_function_prototype(struct function_prototype f, int * buffer){
     /*  Flattens a function prototype struct (that includes a pointer) into a variable-length buffer */
-    int * buffer = (int*)malloc(FUNCTION_NAME_LENGTH + sizeof(int) + (sizeof(int)* f.arg_len));
     memcpy(buffer, &f.name, FUNCTION_NAME_LENGTH);
     memcpy(&buffer[FUNCTION_NAME_LENGTH / sizeof(int)], &f.arg_len, sizeof(int));
     memcpy(&buffer[FUNCTION_NAME_LENGTH / sizeof(int) + 1], f.arg_data, sizeof(int) * f.arg_len);
-    return buffer;
 }
 
 struct function_prototype deserialize_function_prototype(int * buffer){

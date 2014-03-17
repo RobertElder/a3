@@ -218,8 +218,9 @@ int rpcCall(char* name, int* argTypes, void** args){
     }
 
     struct function_prototype f = create_function_prototype(name, argTypes);
-    int * serialized_function_prototype = serialize_function_prototype(f);
     int msg_length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * f.arg_len;
+    int * serialized_function_prototype = (int *)malloc(msg_length);
+    serialize_function_prototype(f,serialized_function_prototype );
 
     struct message * out_msg = create_message_frame( msg_length, LOC_REQUEST, (int*)serialized_function_prototype );
     send_message(binder_sockfd, out_msg);
@@ -285,17 +286,28 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     meaning that the server function execution failed (for example, wrong arguments). In this case,
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
-    struct registration reg;
+    
+
+    struct location loc;
     /*  Set the hostname */
     char * hostname = get_fully_qualified_hostname();
-    memset(&reg.hostname, 0, HOSTNAME_BUFFER_LENGTH);
-    memcpy(&reg.hostname, hostname, strlen(hostname) + 1);
+    memset(&loc.hostname, 0, HOSTNAME_BUFFER_LENGTH);
+    memcpy(&loc.hostname, hostname, strlen(hostname) + 1);
     free(hostname);
-    /*  Set the port */
-    reg.port = get_port_from_addrinfo(server_to_client_addrinfo);
+    loc.port = get_port_from_addrinfo(server_to_client_addrinfo);
 
-    struct message * out_msg = create_message_frame(sizeof(struct registration), SERVER_REGISTER, (int*)&reg);
+    struct message * out_msg = create_message_frame(sizeof(struct location), SERVER_REGISTER, (int*)&loc);
     send_message(server_to_binder_sockfd, out_msg);
+
+    /*  Now send the function prorotype */
+    struct function_prototype pro = create_function_prototype(name, argTypes);
+    out_msg->type = FUNCTION_PROTOTYPE;
+    out_msg->length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * pro.arg_len;
+    out_msg->data = (int*)malloc(out_msg->length);
+    serialize_function_prototype(pro, out_msg->data);
+    send_message(server_to_binder_sockfd, out_msg);
+    free(out_msg->data);
+    free(pro.arg_data);
     destroy_message_frame(out_msg);
     return -1;
 };

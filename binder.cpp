@@ -35,7 +35,7 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(void) {
     vector<int> server_sockets;
-    vector<struct registration> server_registrations;
+    vector<struct location> server_locations;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
@@ -114,14 +114,16 @@ int main(void) {
                 server_sockets.push_back(m_and_fd.fd);
                 break;
             } case SERVER_REGISTER: {
-                struct registration reg;
-                memcpy(&reg, in_msg->data, sizeof(struct registration));
+                struct location loc;
+                memcpy(&loc, in_msg->data, sizeof(struct location));
 
                 //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
                 /*  TODO:
                  *  In the future, put this into a data structure that lets us look up in O(1) by the
                  *  name and argTypes (for when the client asks for a method location) */
-                server_registrations.push_back(reg);
+                server_locations.push_back(loc);
+                /*  Grab the next message which is a function prototype  */
+                destroy_message_frame_and_data(recv_message(m_and_fd.fd));
                 break;
             } case BINDER_TERMINATE: {
                 //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
@@ -141,12 +143,9 @@ int main(void) {
                 return 0;
                 break;
             } case LOC_REQUEST: {
-                assert(server_registrations.size());
+                assert(server_locations.size());
                 /*  For now just return the first server location */
-                struct registration reg = server_registrations.at(0);
-                struct location loc;
-                memcpy(&loc.hostname, &reg.hostname, HOSTNAME_BUFFER_LENGTH);
-                loc.port = reg.port;
+                struct location loc = server_locations.at(0);
                 struct message * out_msg = create_message_frame( sizeof(struct location), LOC_SUCCESS, (int*)&loc);
                 send_message(m_and_fd.fd, out_msg);
                 destroy_message_frame(out_msg);
