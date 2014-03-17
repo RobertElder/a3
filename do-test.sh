@@ -1,5 +1,5 @@
 
-if [ `grep -R -P '\t' *.c *.h | wc -l` -gt 0 ]
+if [ `grep -R -P '\t' *.cpp *.c *.h | wc -l` -gt 0 ]
 then
     echo "There is a tab in one of the files";
     grep -R -P '\t' *.c *.h;
