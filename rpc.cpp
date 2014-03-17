@@ -21,7 +21,7 @@ int server_to_binder_sockfd;
 /*  Declared in global_state.h */
 const char * context_str;
 
-int server_max_fd;
+int server_max_fd = 0;
 fd_set server_connection_fds;
 fd_set server_listener_fds;
 struct addrinfo * server_to_client_addrinfo = NULL;
@@ -103,8 +103,8 @@ int server_to_clients_setup(){
             perror("getsockname");
         }else{
             char * hostname = get_fully_qualified_hostname();
-            //printf("BINDER_ADDRESS %s\n", hostname);
-            //printf("BINDER_PORT %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
+            printf("Server available on %s\n", hostname);
+            printf("Server listening on %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
             free(hostname);
             /* Flush the output so we can read it from the file */
             fflush(stdout);
@@ -126,7 +126,7 @@ int server_to_clients_setup(){
 
     FD_SET(sockfd, &server_connection_fds);
     FD_SET(sockfd, &server_listener_fds);
-    if(server_max_fd > sockfd)
+    if(server_max_fd < sockfd)
         server_max_fd = sockfd;
 
     return 0;
@@ -243,11 +243,52 @@ int rpcCall(char* name, int* argTypes, void** args){
     struct location loc;
     memcpy(&loc, msg->data, sizeof(loc));
     print_with_flush(context_str, "Client RPC call got server %s port %d.\n",loc.hostname, loc.port);
+    char port_buffer[100] = {0};
+    sprintf(port_buffer, "%d", loc.port);
 
     // send the server an execute req
+    struct addrinfo hints, *servinfo;
+    int rv;
+    int client_to_server_sockfd;
 
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
 
+    if ((rv = getaddrinfo(loc.hostname, port_buffer, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+
+    if ((client_to_server_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
+        servinfo->ai_protocol)) == -1) {
+        perror("Error in client: socket");
+        freeaddrinfo(servinfo);
+        return 1;
+    }
+
+    if (connect(client_to_server_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        close(client_to_server_sockfd);
+        perror("Error in client: connect");
+        freeaddrinfo(servinfo);
+        return 1;
+    }
+
+    if (servinfo == NULL) {
+        fprintf(stderr, "Server: failed to connect\n");
+        freeaddrinfo(servinfo);
+        return 1;
+    }
+
+    struct message * exec_msg = create_message_frame(0, EXECUTE, 0);
+    send_message(client_to_server_sockfd, exec_msg);
+    destroy_message_frame_and_data(exec_msg);
+    close(client_to_server_sockfd);
+
+    freeaddrinfo(servinfo);
     destroy_message_frame_and_data(msg);
+
+    print_with_flush(context_str, "Called %s port %d.\n",loc.hostname, loc.port);
     // return 0 after sending the req
     return -1;
 };
@@ -287,9 +328,8 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
     
-
+    /*  Send a message with the location */
     struct location loc;
-    /*  Set the hostname */
     char * hostname = get_fully_qualified_hostname();
     memset(&loc.hostname, 0, HOSTNAME_BUFFER_LENGTH);
     memcpy(&loc.hostname, hostname, strlen(hostname) + 1);
@@ -330,9 +370,13 @@ int rpcExecute(){
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_TERMINATE:{
-                //print_with_flush(context_str, "Got a message from binder to terminate.\n");
+                print_with_flush(context_str, "Got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
                 goto exit;
+                break;
+            }case EXECUTE:{
+                print_with_flush(context_str, "Got a message from a client to execute.\n");
+                destroy_message_frame_and_data(in_msg);
                 break;
             }default:{
                 assert(0);

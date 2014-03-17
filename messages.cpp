@@ -17,7 +17,8 @@
 
 struct message * recv_message(int sockfd){
     /*
-    * Caller is required to de-allocate the pointer to the message, and the message data
+    *  Caller is required to de-allocate the pointer to the message, and the message data
+    *  Returns NULL if the remote host closed the connection.
     */
 
     struct message * received_message = create_message_frame(0,(enum message_type)0,0);
@@ -27,7 +28,11 @@ struct message * recv_message(int sockfd){
     bytes_received = recv(sockfd, &(received_message->length), sizeof(int), 0);
 
     if (bytes_received == -1) perror("Error in recv_message getting length.");
-    assert(bytes_received != 0 && "Connection was closed by remote host.");
+
+    if(bytes_received == 0){
+        destroy_message_frame(received_message);
+        return 0;
+    }
 
     /*  Probably never going to happen, but make sure we got the whole int */
     assert(bytes_received == sizeof(int));
@@ -160,8 +165,10 @@ struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds
                 //printf("Accepting incomming data.\n");
                 struct message_and_fd rtn;
                 rtn.message = recv_message(i);
-                rtn.fd = i;
-                return rtn;
+                if(rtn.message){
+                    rtn.fd = i;
+                    return rtn;
+                }
             }
         }
     }
