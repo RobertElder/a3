@@ -225,15 +225,9 @@ int main(void) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(&max_fd, &client_fds, &listener_fds);
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type) {
-            // TODO: remove if no use
-            case SERVER_HELLO: {
-                //print_with_flush(CONTEXT, "Got a hello message from a server.\n");
-                // server_sockets.push_back(m_and_fd.fd);
-                break;
-            } case SERVER_REGISTER: {
+            case SERVER_REGISTER: {
                 struct location loc;
                 memcpy(&loc, in_msg->data, sizeof(struct location));
-                //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
 
                 // deserialize the next received message, which is a function prototype
                 struct message * msg = recv_message(m_and_fd.fd);

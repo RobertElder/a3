@@ -352,21 +352,9 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
     return -1;
 };
 
+// TODO: still missing various error checking and error code returns
 int rpcRegister(char* name, int* argTypes, skeleton f){
-    /* This function does two key things. It calls the binder, informing it that a server procedure with the
-        indicated name and list of argument types is available at this server. The result returned is 0 for a
-        successful registration, positive for a warning (e.g., this is the same as some previously registered
-        procedure), or negative for failure (e.g., could not locate binder). The function also makes an entry
-        in a local database, associating the server skeleton with the name and list of argument types. The
-        first two parameters are the same as those for the rpcCall function. The third parameter is the
-        address of the server skeleton, which corresponds to the server procedure that is being registered.
-        The skeleton function returns an integer to indicate if the server function call executes correctly
-        or not. In the normal case, it will return zero. In case of an error it will return a negative value
-        meaning that the server function execution failed (for example, wrong arguments). In this case,
-        the RPC library at the server side should return an RPC failure message to the client. */
-    //printf("rpcRegister has not been implemented yet.\n");
-    
-    /*  Send a message with the location */
+    // get server location
     struct location loc;
     char * hostname = get_fully_qualified_hostname();
     memset(&loc.hostname, 0, HOSTNAME_BUFFER_LENGTH);
@@ -374,10 +362,11 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     free(hostname);
     loc.port = get_port_from_addrinfo(server_to_client_addrinfo);
 
+    // register the server with the binder by sending it its location
     struct message * out_msg = create_message_frame(sizeof(struct location), SERVER_REGISTER, (int*)&loc);
     send_message(server_to_binder_sockfd, out_msg);
 
-    /*  Now send the function prorotype */
+    // register the function prorotype with the binder
     struct function_prototype pro = create_function_prototype(name, argTypes);
     out_msg->type = FUNCTION_PROTOTYPE;
     out_msg->length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * pro.arg_len;
@@ -385,6 +374,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     serialize_function_prototype(pro, out_msg->data);
     send_message(server_to_binder_sockfd, out_msg);
 
+    // locally associate the server skeleton with the function prototype (name and arguments)
     struct func_skel_pair pair;
     pair.func = pro;
     pair.skel_function = f;
@@ -392,7 +382,9 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 
     free(out_msg->data);
     destroy_message_frame(out_msg);
-    return -1;
+
+    // registration was successfull
+    return 0;
 };
 
 int rpcExecute(){
@@ -403,10 +395,6 @@ int rpcExecute(){
      * serve).
      * rpcExecute should be able to handle multiple requests from clients without blocking, so that
      * a slow server function will not choke the whole server.*/
-
-    struct message * out_msg = create_message_frame(0, SERVER_HELLO, 0);
-    send_message(server_to_binder_sockfd, out_msg);
-    destroy_message_frame_and_data(out_msg);
 
     while(1) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(&server_max_fd, &server_connection_fds, &server_listener_fds);
