@@ -22,7 +22,10 @@ using namespace std;
 /*  Declared in global_state.h */
 const char * context_str;
 
-int server_to_binder_sockfd;
+// socket fds to connect the server or the client to the binder
+int server_to_binder_sockfd = -1;
+int client_to_binder_sockfd = -1;
+
 int server_max_fd = 0;
 fd_set server_connection_fds;
 fd_set server_listener_fds;
@@ -53,7 +56,10 @@ skeleton get_function_skeleton(struct function_prototype func) {
 }
 
 // output: the socket file decriptor
-int binder_socket_setup(char * port, char * address){
+int binder_socket_setup(){
+    char * port = getenv ("BINDER_PORT");
+    char * address = getenv ("BINDER_ADDRESS");
+
     struct addrinfo hints, *servinfo;
     int binder_sockfd;
     int rv;
@@ -89,7 +95,7 @@ int binder_socket_setup(char * port, char * address){
 }
 
 // set up socket to listen to clients
-int server_to_clients_setup(){
+int server_to_clients_setup() {
     int sockfd;
     struct addrinfo hints;
     int yes=1;
@@ -154,28 +160,13 @@ int server_to_clients_setup(){
     return 0;
 }
 
-int rpcInit(){
-    /*The server first calls rpcInit, which does two things. First, it creates a connection socket
-     * to be used for accepting connections from clients. Secondly, it opens a connection to the binder,
-     * this connection is also used by the server for sending register requests to the binder and is left
-     * open as long as the server is up so that the binder knows the server is available. This set of
-     * permanently open connections to the binder (from all the servers) is somewhat unrealistic, but
-     * provides a straightforward mechanism for the binder to discover server termination. The signature
-     * of rpcInit is
-     * int rpcInit(void);
-     * The return value is 0 for success, negative if any part of the initialization sequence was unsuccessful
-     * (using dirent negative values for dirent error conditions would be a good idea).*/
-
+int rpcInit() {
     FD_ZERO(&server_connection_fds);
     FD_ZERO(&server_listener_fds);
-    char * port = getenv ("BINDER_PORT");
-    char * address = getenv ("BINDER_ADDRESS");
-    //printf("Running rpcInit for server with binder BINDER_ADDRESS: %s\n", address);
-    //printf("Running rpcInit for server with binder BINDER_PORT: %s\n", port);
 
-    server_to_binder_sockfd = binder_socket_setup(port, address);
+    server_to_binder_sockfd = binder_socket_setup();
     if (server_to_binder_sockfd < 0) {
-        print_with_flush(context_str, "Failed to setup connection to binder.\n");
+        print_with_flush(context_str, "Failed to setup server connection to binder.\n");
         return -1;
     }
     /*  We want to continue to listen for messages from the binder */
@@ -192,62 +183,32 @@ int rpcInit(){
     return 0;
 };
 
+// called by the client to execute a server function
 int rpcCall(char* name, int* argTypes, void** args) {
-    /* First, note that the integer returned is the result of executing the rpcCall function, not the
-     * result of the procedure that the rpcCall was executing. That is, if the rpcCall failed (e.g. if there
-     * was no server that provided the desired procedure), that would be indicated by the integer result.
-     * For successful execution, the returned value should be 0. If you wish to indicate a warning, it
-     * should be a number greater than 0. A severe error (such as no available server) should be indicated
-     * by a number less than 0. The procedure that the rpcCall is executing is, therefore, not able to
-     * directly return a value. However, it may do so via some argument.
-     * The name argument is the name of the remote procedure to be executed. A procedure of this
-     * name must have been registered with the binder.
-     * The argTypes array species the types of the arguments, and whether the argument is an \input
-     * to", \output from", or \input to and output from" the server. Each argument has an integer to
-     * encode the type information. These will collectively form the argTypes array. Thus argTypes[0]
-     * species the type information for args[0], and so forth.
-     * The argument type integer will be broken down as follows. Therst byte will specify the
-     * input/output nature of the argument. Specically, if therst bit is set then the argument is input
-     * to the server. If the second bit is set the argument is output from the server. The remaining
-     * 6 bits of this byte are currently undened and must be set to 0. The next byte contains argument
-     * type information. The types are the standard C types, excluding the null terminated string for
-     * simplicity.
-     * #define ARG_CHAR 1
-     * #define ARG_SHORT 2
-     * #define ARG_INT 3
-     * #define ARG_LONG 4
-     * #define ARG_DOUBLE 5
-     * #define ARG_FLOAT 6
-     * In addition, we wish to be able to pass arrays to our remote procedure. The lower two bytes
-     * of the argument type integer will specify the length of the array. Arrays are limited to a length of
-     * 216. If the array size is 0, the argument is considered to be a scalar, not an array. Note that it is
-     * expected that the client programmer will have reserved successcient space for any output arrays.
-     * You may alsond useful the denitions
-     * #define ARG_INPUT 31
-     * #define ARG_OUTPUT 30
-     * */
     print_with_flush(context_str, "Client wants to execute function: %s\n", name);
 
-    // send a location req msg to the binder
-    char * port = getenv ("BINDER_PORT");
-    char * address = getenv ("BINDER_ADDRESS");
-    int binder_sockfd = binder_socket_setup(port, address);
-    if (binder_sockfd < 0) {
-        fprintf(stderr, "Failed to create a binder socket.\n");
-        return -1;
+    // connect to the binder if have not done so already
+    if (client_to_binder_sockfd == -1) {
+        client_to_binder_sockfd = binder_socket_setup();
+        if (client_to_binder_sockfd < 0) {
+            fprintf(stderr, "Failed to setup client connection to binder.\n");
+            return -1;
+        }
     }
 
+    // send a location req msg to the binder
     struct function_prototype f = create_function_prototype(name, argTypes);
     int function_prorotype_len = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * f.arg_len;
     int * serialized_function_prototype = (int *)malloc(function_prorotype_len);
     serialize_function_prototype(f, serialized_function_prototype);
 
-    struct message * out_msg = create_message_frame( function_prorotype_len , LOC_REQUEST, (int*)serialized_function_prototype );
-    send_message(binder_sockfd, out_msg);
+    struct message * out_msg = create_message_frame(
+        function_prorotype_len , LOC_REQUEST, (int*)serialized_function_prototype);
+    send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame(out_msg);
 
     // receive the server location for the procedure
-    struct message * msg = recv_message(binder_sockfd);
+    struct message * msg = recv_message(client_to_binder_sockfd);
 
     // if cannot get the location, return a negative value as a reson/error code
     if (msg->type == LOC_FAILURE) {
@@ -387,19 +348,12 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     return 0;
 };
 
-int rpcExecute(){
-    /* This function hands over control to the skeleton, which is expected to unmarshall the message, call the appro-
-     * priate procedures as requested by the clients, and marshall the returns. Then rpcExecute sends the
-     * result back to the client. It returns 0 for normally requested termination (the binder has requested
-     * termination of the server) and negative otherwise (e.g. if there are no registered procedures to
-     * serve).
-     * rpcExecute should be able to handle multiple requests from clients without blocking, so that
-     * a slow server function will not choke the whole server.*/
-
+int rpcExecute() {
     while(1) {
-        struct message_and_fd m_and_fd = multiplexed_recv_message(&server_max_fd, &server_connection_fds, &server_listener_fds);
+        struct message_and_fd m_and_fd = multiplexed_recv_message(
+            &server_max_fd, &server_connection_fds, &server_listener_fds);
         struct message * in_msg = m_and_fd.message;
-        switch (in_msg->type){
+        switch (in_msg->type) {
             case SERVER_TERMINATE: {
                 //print_with_flush(context_str, "Got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
@@ -451,57 +405,21 @@ exit:
     return -1;
 };
 
+// called by the client to gracefully terminate the system
 int rpcTerminate(){
-    /* To gracefully terminate the system a client executes the function:
-     * int rpcTerminate ( void );
-     * The client stub is expected to pass this request to the binder. The binder in turn will inform
-     * the servers, which are all expected to gracefully terminate. The binder should terminate after all
-     * servers have terminated. Clients are expected to terminate on their own cognizance. */
-
-    char * port = getenv ("BINDER_PORT");
-    char * address = getenv ("BINDER_ADDRESS");
-    //printf("Running rpcTerminate for client with binder BINDER_ADDRESS: %s\n", address);
-    //printf("Running rpcTerminate for client with binder BINDER_PORT: %s\n", port);
-
-    struct addrinfo hints, *servinfo;
-    int rv;
-    int client_to_binder_sockfd;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
-    if ((rv = getaddrinfo(address, port, &hints, &servinfo)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
-    }
-
-    if ((client_to_binder_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
-        servinfo->ai_protocol)) == -1) {
-        perror("Error in client: socket");
-        freeaddrinfo(servinfo);
-        return 1;
-    }
-
-    if (connect(client_to_binder_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
-        close(client_to_binder_sockfd);
-        perror("Error in client: connect");
-        freeaddrinfo(servinfo);
-        return 1;
-    }
-
-    if (servinfo == NULL) {
-        fprintf(stderr, "Server: failed to connect\n");
-        freeaddrinfo(servinfo);
-        return 1;
+    // connect to the binder if have not done so already
+    if (client_to_binder_sockfd == -1) {
+        client_to_binder_sockfd = binder_socket_setup();
+        if (client_to_binder_sockfd < 0) {
+            fprintf(stderr, "Failed to setup client connection to binder.\n");
+            return -1;
+        }
     }
 
     struct message * out_msg = create_message_frame(0, BINDER_TERMINATE, 0);
     send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
     close(client_to_binder_sockfd);
-
-    freeaddrinfo(servinfo);
 
     //printf("rpcTerminate has not been implemented yet.\n");
     return -1;
