@@ -24,6 +24,8 @@
 
 using namespace std;
 vector<struct func_loc_pair> func_loc_map;
+// recently run servers: from least recently run to most recently run
+vector<int> recent_servers;
 
 void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
@@ -33,32 +35,73 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int argtypescmp(int * arg_types, int * arg_types2) {
+int get_server_index(int id) {
+    u_int i;
+    for (i = 0; i < recent_servers.size(); i++) {
+        if (recent_servers[i] == id) return i;
+    }
+    return -1;
+}
+
+void update_run_order(int recent_index, int id) {
+    if (recent_index != -1) recent_servers.erase(recent_servers.begin() + recent_index);
+    recent_servers.push_back(id);
+}
+
+void update_run_order(int id) {
+    int index = get_server_index(id);
+    update_run_order(index, id);
+}
+
+int argtypescmp(int * arg_types1, int * arg_types2, int len) {
+    int i;
+    for (i = 0; i < len; i++) {
+        if (arg_types1[i] != arg_types2[i]) return -1;
+    }
     return 0;
 }
 
 struct location find_func_server(struct function_prototype func) {
     // iterate over the func to loc map to find all locs for the target func
-    vector<struct location> matches;
+    vector<struct server> matches;
     u_int i;
     for(i = 0; i < func_loc_map.size(); i++) {
         struct function_prototype temp = func_loc_map[i].func;
         if (strcmp(temp.name, func.name) != 0) continue;
         if (temp.arg_len != func.arg_len) continue;
-        if (argtypescmp(temp.arg_data, func.arg_data) != 0) continue;
-        matches.push_back(func_loc_map[i].loc);
+        if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
+        matches.push_back(func_loc_map[i].serv);
     }
     int num_matched = matches.size();
+
     if (num_matched == 0) {
         struct location null_loc;
         null_loc.port = -1;
         return null_loc;
     }
-    if (num_matched == 1) return matches[0];
+
+    if (num_matched == 1) {
+        update_run_order(matches[0].id);
+        return matches[0].loc;
+    }
 
     // more than one server can execute the function
-    // TODO: want to round robin the servers and figure out which should execute
-    return matches[0];
+    // want to run the server that was least recently run or never run
+    int recent_index = recent_servers.size();
+    int match_index;
+
+    for (i = 0; i < matches.size(); i++) {
+        int index = get_server_index(matches[i].id);
+
+        if (index < recent_index) {
+            recent_index = index;
+            match_index = i;
+        }
+        if (index == -1) break;
+    }
+
+    update_run_order(recent_index, matches[match_index].id);
+    return matches[match_index].loc;
 }
 
 int main(void) {
@@ -67,6 +110,7 @@ int main(void) {
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
     int rv;
+    int next_serv_id = 0;
 
     int max_fd;
     fd_set client_fds;
@@ -143,20 +187,21 @@ int main(void) {
             } case SERVER_REGISTER: {
                 struct location loc;
                 memcpy(&loc, in_msg->data, sizeof(struct location));
-
-                //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
-                /*  TODO:
-                 *  In the future, put this into a data structure that lets us look up in O(1) by the
-                 *  name and argTypes (for when the client asks for a method location) */
-                // server_locations.push_back(loc);
+                print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
 
                 /*  Grab the next message which is a function prototype  */
                 // deserialize the received message
                 struct message * msg = recv_message(m_and_fd.fd);
                 struct function_prototype func = deserialize_function_prototype(msg->data);
+
                 // use the function prototype struct and pair it up with the location
+                struct server s;
+                s.id = next_serv_id;
+                next_serv_id += 1;
+                s.loc = loc;
+
                 struct func_loc_pair pair;
-                pair.loc = loc;
+                pair.serv = s;
                 pair.func = func;
                 func_loc_map.push_back(pair);
                 destroy_message_frame_and_data(msg);

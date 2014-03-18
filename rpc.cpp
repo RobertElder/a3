@@ -201,7 +201,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
      * #define ARG_INPUT 31
      * #define ARG_OUTPUT 30
      * */
-    //printf("rpcCall has not been implemented yet.\n");
+    print_with_flush(context_str, "Client wants to execute function: %s\n", name);
 
     // send a location req msg to the binder
     char * port = getenv ("BINDER_PORT");
@@ -215,7 +215,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
     struct function_prototype f = create_function_prototype(name, argTypes);
     int function_prorotype_len = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * f.arg_len;
     int * serialized_function_prototype = (int *)malloc(function_prorotype_len);
-    serialize_function_prototype(f,serialized_function_prototype );
+    serialize_function_prototype(f, serialized_function_prototype);
 
     struct message * out_msg = create_message_frame( function_prorotype_len , LOC_REQUEST, (int*)serialized_function_prototype );
     send_message(binder_sockfd, out_msg);
@@ -227,10 +227,10 @@ int rpcCall(char* name, int* argTypes, void** args) {
     // if cannot get the location, return a negative value as a reson/error code
     if (msg->type == LOC_FAILURE) {
         // TODO: should return the reason code present in the data
+        print_with_flush(context_str, "Cannot do rpcCall, LOC_FAILURE.\n");
         destroy_message_frame_and_data(msg);
         return -1;
     }
-
     assert(msg->type == LOC_SUCCESS);
 
     // retrieve server identifier and port from the message
@@ -381,12 +381,12 @@ int rpcExecute(){
         struct message_and_fd m_and_fd = multiplexed_recv_message(&server_max_fd, &server_connection_fds, &server_listener_fds);
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
-            case SERVER_TERMINATE:{
+            case SERVER_TERMINATE: {
                 print_with_flush(context_str, "Got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
                 goto exit;
                 break;
-            }case EXECUTE:{
+            } case EXECUTE: {
                 print_with_flush(context_str, "Got a message from a client to execute.\n");
                 struct message * prototype_msg = recv_message(m_and_fd.fd);
                 struct message * args_msg = recv_message(m_and_fd.fd);
@@ -402,7 +402,7 @@ int rpcExecute(){
                 destroy_message_frame_and_data(prototype_msg);
                 destroy_message_frame_and_data(args_msg);
                 break;
-            }default:{
+            } default: {
                 assert(0);
             }
         }

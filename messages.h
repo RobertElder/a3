@@ -55,8 +55,13 @@ struct function_prototype {
     int * arg_data;
 };
 
-struct func_loc_pair {
+struct server {
+    int id;
     struct location loc;
+};
+
+struct func_loc_pair {
+    struct server serv;
     struct function_prototype func;
 };
 
