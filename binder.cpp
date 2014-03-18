@@ -69,6 +69,8 @@ struct location find_func_server(struct function_prototype func) {
         struct function_prototype temp = func_loc_map[i].func;
         if (strcmp(temp.name, func.name) != 0) continue;
         if (temp.arg_len != func.arg_len) continue;
+        printf("%d %d", temp.arg_len, func.arg_len);
+        fflush(stdout);
         if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
         matches.push_back(func_loc_map[i].serv);
     }
@@ -205,7 +207,6 @@ int main(void) {
                 pair.func = func;
                 func_loc_map.push_back(pair);
                 destroy_message_frame_and_data(msg);
-                free(func.arg_data);
                 break;
             } case BINDER_TERMINATE: {
                 //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
@@ -221,6 +222,9 @@ int main(void) {
                 FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
                 destroy_message_frame_and_data(in_msg);
+                for(unsigned int i = 0; i < func_loc_map.size(); i++) {
+                    free(func_loc_map[i].func.arg_data);
+                }
                 print_with_flush(CONTEXT, "Exiting binder...\n");
                 return 0;
                 break;
