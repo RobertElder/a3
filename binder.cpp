@@ -53,10 +53,26 @@ void update_run_order(int id) {
     update_run_order(index, id);
 }
 
+// returns 0 if the two argTypes are the same
+// returns -1 if the two argTypes are different
 int argtypescmp(int * arg_types1, int * arg_types2, int len) {
     int i;
     for (i = 0; i < len; i++) {
-        if (arg_types1[i] != arg_types2[i]) return -1;
+        int arg1 = arg_types1[i];
+        int arg2 = arg_types2[i];
+
+        // parse the arg into type portion (first 2 bytes) and length (second 2 bytes)
+        int type1 = 0xffff0000 & arg1;
+        int len1 =  0x0000ffff & arg1;
+
+        int type2 = 0xffff0000 & arg2;
+        int len2 = 0x0000ffff & arg2;
+
+        // compare if they are both arrays or scalars
+        if (!((len1 == 0 && len2 == 0) || (len1 > 0 && len2 > 0))) return -1;
+
+        // compare the type portion
+        if (type1 != type2) return -1;
     }
     return 0;
 }
