@@ -189,7 +189,7 @@ int main(void) {
             } case SERVER_REGISTER: {
                 struct location loc;
                 memcpy(&loc, in_msg->data, sizeof(struct location));
-                print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
+                //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
 
                 /*  Grab the next message which is a function prototype  */
                 // deserialize the received message

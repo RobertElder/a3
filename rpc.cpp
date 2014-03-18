@@ -32,6 +32,26 @@ struct addrinfo * client_sock_servinfo;
 
 vector<struct func_skel_pair> registered_functions;
 
+int argtypescmp(int * arg_types1, int * arg_types2, int len) {
+    int i;
+    for (i = 0; i < len; i++) {
+        if (arg_types1[i] != arg_types2[i]) return -1;
+    }
+    return 0;
+}
+
+skeleton get_function_skeleton(struct function_prototype func) {
+    for(unsigned int i = 0; i < registered_functions.size(); i++) {
+        struct function_prototype temp = registered_functions[i].func;
+        if (strcmp(temp.name, func.name) != 0) continue;
+        if (temp.arg_len != func.arg_len) continue;
+        if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
+        return registered_functions[i].skel_function;
+    }
+    assert(0);
+    return 0;
+}
+
 // output: the socket file decriptor
 int binder_socket_setup(char * port, char * address){
     struct addrinfo hints, *servinfo;
@@ -301,7 +321,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
     freeaddrinfo(servinfo);
     destroy_message_frame_and_data(msg);
 
-    print_with_flush(context_str, "Called %s port %d.\n",loc.hostname, loc.port);
+    //print_with_flush(context_str, "Called %s port %d.\n",loc.hostname, loc.port);
     close(client_to_server_sockfd);
     // return 0 after sending the req
     return -1;
@@ -389,12 +409,12 @@ int rpcExecute(){
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type){
             case SERVER_TERMINATE: {
-                print_with_flush(context_str, "Got a message from binder to terminate.\n");
+                //print_with_flush(context_str, "Got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
                 goto exit;
                 break;
             } case EXECUTE: {
-                print_with_flush(context_str, "Got a message from a client to execute.\n");
+                //print_with_flush(context_str, "Got a message from a client to execute.\n");
                 struct message * prototype_msg = recv_message(m_and_fd.fd);
                 struct message * args_msg = recv_message(m_and_fd.fd);
                 struct function_prototype f = deserialize_function_prototype((int*)(prototype_msg->data));
@@ -402,7 +422,14 @@ int rpcExecute(){
                 void ** args = create_empty_args_array(f);
                 deserialize_args(f, (char*)args_msg->data, args);
                 //print_args((char *)context_str, f, args);
-                destroy_args_array(f,args);
+                /*  Now find out which function we're actually calling and call it */
+                int * arg_data_buffer = (int*) malloc((f.arg_len + 1) * sizeof(int));
+                memcpy(arg_data_buffer, f.arg_data, sizeof(int) * f.arg_len);
+                arg_data_buffer[f.arg_len] = 0;
+                skeleton skel = get_function_skeleton(f);
+                skel(arg_data_buffer, args);
+                free(arg_data_buffer);
+                destroy_args_array(f, args);
                 free(f.arg_data);
                 destroy_message_frame_and_data(prototype_msg);
                 destroy_message_frame_and_data(args_msg);
