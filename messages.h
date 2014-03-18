@@ -65,6 +65,8 @@ void print_with_flush(const char * , const char * , ...);
 char * get_fully_qualified_hostname();
 int get_port_from_addrinfo(struct addrinfo *);
 void serialize_function_prototype(struct function_prototype, int *);
+void print_function_prototype(char *, struct function_prototype);
+struct function_prototype deserialize_function_prototype(int * );
 struct function_prototype serialize_function_prototype(int *);
 struct function_prototype create_function_prototype(char *, int *);  /*  Translate encapsulate in something that we can put in a vector */
 
@@ -76,3 +78,4 @@ void deserialize_args(struct function_prototype , char * , void ** );
 
 void destroy_args_array(struct function_prototype , void ** );
 void ** create_empty_args_array(struct function_prototype );
+void print_args(char * , struct function_prototype , void **);

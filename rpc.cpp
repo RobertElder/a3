@@ -288,9 +288,13 @@ int rpcCall(char* name, int* argTypes, void** args){
     struct message * fcn_msg = create_message_frame(function_prorotype_len, FUNCTION_PROTOTYPE, serialized_function_prototype);
     send_message(client_to_server_sockfd, fcn_msg);
     destroy_message_frame_and_data(fcn_msg);
+    print_with_flush(context_str, "Sending function prorotype:\n");
+    print_function_prototype((char *)context_str, f);
 
     /*  Send all the arguments */
     int * serialized_args = (int*)serialize_args(f, args);
+    print_with_flush(context_str, "Sending function args:\n");
+    print_args((char *)context_str, f, args);
     struct message * args_msg = create_message_frame(get_args_buffer_size(f), FUNCTION_ARGS, serialized_args);
     send_message(client_to_server_sockfd, args_msg);
     destroy_message_frame_and_data(args_msg);
@@ -389,10 +393,16 @@ int rpcExecute(){
             }case EXECUTE:{
                 print_with_flush(context_str, "Got a message from a client to execute.\n");
                 struct message * prototype_msg = recv_message(m_and_fd.fd);
-                print_with_flush(context_str, "Got function prototype.\n");
                 struct message * args_msg = recv_message(m_and_fd.fd);
                 print_with_flush(context_str, "Got function args.\n");
-
+                struct function_prototype f = deserialize_function_prototype((int*)(prototype_msg->data));
+                print_with_flush(context_str, "Got function prorotype:\n");
+                print_function_prototype((char *)context_str, f);
+                void ** args = create_empty_args_array(f);
+                deserialize_args(f, (char*)args_msg->data, args);
+                print_args((char *)context_str, f, args);
+                destroy_args_array(f,args);
+                free(f.arg_data);
                 destroy_message_frame_and_data(prototype_msg);
                 destroy_message_frame_and_data(args_msg);
                 break;
@@ -465,4 +475,4 @@ int rpcTerminate(){
 
     //printf("rpcTerminate has not been implemented yet.\n");
     return -1;
-};
+}

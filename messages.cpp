@@ -214,7 +214,8 @@ struct function_prototype deserialize_function_prototype(int * buffer){
     struct function_prototype f;
     memcpy(&f.name, buffer, FUNCTION_NAME_LENGTH);
     memcpy(&f.arg_len, &buffer[FUNCTION_NAME_LENGTH/sizeof(int)], sizeof(int));
-    memcpy(&f.arg_data, &buffer[FUNCTION_NAME_LENGTH/sizeof(int) + 1], sizeof(int) * f.arg_len);
+    f.arg_data = (int*)malloc(sizeof(int) * f.arg_len);
+    memcpy(f.arg_data, &buffer[FUNCTION_NAME_LENGTH/sizeof(int) + 1], sizeof(int) * f.arg_len);
     return f;
 }
 
@@ -232,6 +233,85 @@ struct function_prototype create_function_prototype(char * name, int * argTypes)
     memcpy(&f.name, name, name_len);
     memcpy(f.arg_data, argTypes, sizeof(int) * f.arg_len);
     return f;
+}
+
+void print_function_prototype(char * c, struct function_prototype f){
+    print_with_flush(c, "-- Begin Function Prorotype --\n");
+    print_with_flush(c, "name: %s\n",f.name);
+    print_with_flush(c, "arg_len: %d\n",f.arg_len);
+    for(int i = 0; i < f.arg_len; i++){
+        print_with_flush(c, "argType %d: %X\n",i, f.arg_data[i]);
+    }
+    print_with_flush(c, "-- End Function Prorotype -- \n");
+}
+
+void print_one_args_array_size(char * context, int index, int data, void *p){
+    int num_units = 0xFFFF & data;
+    int is_array = 1;
+    if(num_units == 0){
+        num_units = 1;
+        is_array = 0;
+    }
+
+    int data_type = ((0xFF << 16) & data) >> 16;
+
+    if(is_array){
+        print_with_flush(context, "%d) Array = {", index);
+    }else{
+        print_with_flush(context, "%d) Scalar: ", index);
+    }
+    switch(data_type){
+        case ARG_CHAR:{
+            for(int i = 0; i < num_units; i++){
+                printf("%c", ((char *)p)[i]);
+                if(i !=  (num_units-1) )
+                    printf(", ");
+            }
+            break;
+        }case ARG_SHORT:{
+            for(int i = 0; i < num_units; i++){
+                printf("%d", ((short *)p)[i]);
+                if(i !=  (num_units-1) )
+                    printf(", ");
+            }
+            break;
+        }case ARG_INT:{
+            for(int i = 0; i < num_units; i++){
+                printf("%d", ((int*)p)[i]);
+                if(i !=  (num_units-1) )
+                    printf(", ");
+            }
+            break;
+        }case ARG_LONG:{
+            for(int i = 0; i < num_units; i++){
+                printf("%ld", ((long int*)p)[i]);
+                if(i !=  (num_units-1) )
+                    printf(", ");
+            }
+            break;
+        }case ARG_DOUBLE:{
+            for(int i = 0; i < num_units; i++){
+                printf("%f", ((double*)p)[i]);
+                if(i !=  (num_units-1) )
+                    printf(", ");
+            }
+            break;
+        }case ARG_FLOAT:{
+            for(int i = 0; i < num_units; i++){
+                printf("%f", ((float *)p)[i]);
+                if(i !=  (num_units-1) )
+                    printf(", ");
+            }
+            break;
+        }default:{
+            assert(0);
+        }
+    }
+    if(is_array){
+        printf("}\n");
+    }else{
+        printf("\n");
+    }
 }
 
 int get_one_args_array_size(int data){
@@ -287,6 +367,14 @@ int get_args_buffer_size(struct function_prototype f){
     }
 }
 
+void print_args(char * context, struct function_prototype f, void ** args){
+    print_with_flush(context, "^^^^^^^^ BEGIN args ^^^^^^\n");
+    for(int i = 0; i < f.arg_len; i++){
+        print_one_args_array_size(context, i, f.arg_data[i], ((void**)args)[i]);
+    }
+    print_with_flush(context, "vvvvvvvv END args vvvvvvvv\n");
+}
+
 int * serialize_args(struct function_prototype f, void ** args){
     /*  Will return a buffer that contains both the input and output arguments pointed to by args */
     int size = get_args_buffer_size(f);
@@ -294,7 +382,7 @@ int * serialize_args(struct function_prototype f, void ** args){
     memset(buffer, 0, size);
     int offset = 0;
     for(int i = 0; i < f.arg_len; i++){
-        memcpy(&buffer[offset], ((int**)args)[i], get_one_args_array_size(f.arg_data[i]));
+        memcpy(&buffer[offset], ((void**)args)[i], get_one_args_array_size(f.arg_data[i]));
         offset += get_one_args_array_size(f.arg_data[i]);
     }
     return (int*)buffer;
@@ -304,7 +392,7 @@ void deserialize_args(struct function_prototype f, char * serialized_args, void 
     /*  De-serialize a serialized args array into a pre-allocated array with the correct array lengths (like that found in an rpcCall) */
     int offset = 0;
     for(int i = 0; i < f.arg_len; i++){
-        memcpy( ((int**)deserialized_args)[i], &serialized_args[offset], get_one_args_array_size(f.arg_data[i]));
+        memcpy( ((void**)deserialized_args)[i], &serialized_args[offset], get_one_args_array_size(f.arg_data[i]));
         offset += get_one_args_array_size(f.arg_data[i]);
     }
 }
