@@ -26,6 +26,7 @@ using namespace std;
 vector<struct func_loc_pair> func_loc_map;
 // recently run servers: from least recently run to most recently run
 vector<int> recent_servers;
+vector<struct server> registered_servers;
 
 void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
@@ -35,22 +36,22 @@ void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int get_server_index(int id) {
+int get_server_index(int sockfd) {
     u_int i;
     for (i = 0; i < recent_servers.size(); i++) {
-        if (recent_servers[i] == id) return i;
+        if (recent_servers[i] == sockfd) return i;
     }
     return -1;
 }
 
-void update_run_order(int recent_index, int id) {
+void update_run_order(int recent_index, int sockfd) {
     if (recent_index != -1) recent_servers.erase(recent_servers.begin() + recent_index);
-    recent_servers.push_back(id);
+    recent_servers.push_back(sockfd);
 }
 
-void update_run_order(int id) {
-    int index = get_server_index(id);
-    update_run_order(index, id);
+void update_run_order(int sockfd) {
+    int index = get_server_index(sockfd);
+    update_run_order(index, sockfd);
 }
 
 // returns 0 if the two argTypes are the same
@@ -77,17 +78,21 @@ int argtypescmp(int * arg_types1, int * arg_types2, int len) {
     return 0;
 }
 
+// returns 0 if the same; returns -1 if different
+int compare_functions(struct function_prototype f1, struct function_prototype f2) {
+    if (strcmp(f1.name, f2.name) != 0) return -1;
+    if (f1.arg_len != f2.arg_len) return -1;
+    if (argtypescmp(f1.arg_data, f2.arg_data, f1.arg_len) != 0) return -1;
+    return 0;
+}
+
 struct location find_func_server(struct function_prototype func) {
     // iterate over the func to loc map to find all locs for the target func
     vector<struct server> matches;
     u_int i;
     for(i = 0; i < func_loc_map.size(); i++) {
         struct function_prototype temp = func_loc_map[i].func;
-        if (strcmp(temp.name, func.name) != 0) continue;
-        if (temp.arg_len != func.arg_len) continue;
-        printf("%d %d", temp.arg_len, func.arg_len);
-        fflush(stdout);
-        if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
+        if (compare_functions(temp, func) == -1) continue;
         matches.push_back(func_loc_map[i].serv);
     }
     int num_matched = matches.size();
@@ -99,7 +104,7 @@ struct location find_func_server(struct function_prototype func) {
     }
 
     if (num_matched == 1) {
-        update_run_order(matches[0].id);
+        update_run_order(matches[0].sockfd);
         return matches[0].loc;
     }
 
@@ -109,7 +114,7 @@ struct location find_func_server(struct function_prototype func) {
     int match_index;
 
     for (i = 0; i < matches.size(); i++) {
-        int index = get_server_index(matches[i].id);
+        int index = get_server_index(matches[i].sockfd);
 
         if (index < recent_index) {
             recent_index = index;
@@ -118,17 +123,39 @@ struct location find_func_server(struct function_prototype func) {
         if (index == -1) break;
     }
 
-    update_run_order(recent_index, matches[match_index].id);
+    update_run_order(recent_index, matches[match_index].sockfd);
     return matches[match_index].loc;
 }
 
+void register_server(struct server serv) {
+    // check if this server has already registered
+    u_int i;
+    for (i = 0; i < registered_servers.size(); i++) {
+        if (serv.sockfd == registered_servers[i].sockfd) return;
+    }
+    // add server to registered servers
+    registered_servers.push_back(serv);
+}
+
+void register_server_func(struct func_loc_pair pair) {
+    // check if the server has registered this func before
+    u_int i;
+    for (i = 0; i < func_loc_map.size(); i++) {
+        struct func_loc_pair p = func_loc_map[i];
+        if (p.serv.sockfd != pair.serv.sockfd) continue;
+        if (compare_functions(p.func, pair.func) == -1) continue;
+        // if get here, then the server has already registered this function with the binder
+        return;
+    }
+    // add the pair to the map if it is new
+    func_loc_map.push_back(pair);
+}
+
 int main(void) {
-    vector<int> server_sockets;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
     int rv;
-    int next_serv_id = 0;
 
     int max_fd;
     fd_set client_fds;
@@ -198,40 +225,43 @@ int main(void) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(&max_fd, &client_fds, &listener_fds);
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type) {
+            // TODO: remove if no use
             case SERVER_HELLO: {
                 //print_with_flush(CONTEXT, "Got a hello message from a server.\n");
-                server_sockets.push_back(m_and_fd.fd);
+                // server_sockets.push_back(m_and_fd.fd);
                 break;
             } case SERVER_REGISTER: {
                 struct location loc;
                 memcpy(&loc, in_msg->data, sizeof(struct location));
                 //print_with_flush(CONTEXT, "Got a register message from server at %s, port %d.\n", loc.hostname, loc.port);
 
-                /*  Grab the next message which is a function prototype  */
-                // deserialize the received message
+                // deserialize the next received message, which is a function prototype
                 struct message * msg = recv_message(m_and_fd.fd);
                 struct function_prototype func = deserialize_function_prototype(msg->data);
 
-                // use the function prototype struct and pair it up with the location
+                // register the server
                 struct server s;
-                s.id = next_serv_id;
-                next_serv_id += 1;
+                s.sockfd = m_and_fd.fd;
                 s.loc = loc;
+                register_server(s);
 
+                // register the function for the server
                 struct func_loc_pair pair;
                 pair.serv = s;
                 pair.func = func;
-                func_loc_map.push_back(pair);
+                register_server_func(pair);
+
                 destroy_message_frame_and_data(msg);
                 break;
             } case BINDER_TERMINATE: {
                 //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
                 /*  Terminate all the waiting servers */
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
-                for(vector<int>::iterator it = server_sockets.begin(); it != server_sockets.end(); it++){
-                    send_message(*it, out_msg);
-                    FD_CLR(*it, &client_fds);
-                    close(*it);
+                for(vector<struct server>::iterator it = registered_servers.begin(); it != registered_servers.end(); it++){
+                    int sockfd = (*it).sockfd;
+                    send_message(sockfd, out_msg);
+                    FD_CLR(sockfd, &client_fds);
+                    close(sockfd);
                 }
                 destroy_message_frame_and_data(out_msg);
                 /*  Clean up connection from client */

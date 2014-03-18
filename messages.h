@@ -57,7 +57,7 @@ struct function_prototype {
 };
 
 struct server {
-    int id;
+    int sockfd;
     struct location loc;
 };
 
