@@ -355,7 +355,7 @@ int rpcExecute() {
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type) {
             case SERVER_TERMINATE: {
-                //print_with_flush(context_str, "Got a message from binder to terminate.\n");
+                print_with_flush(context_str, "Server got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
                 goto exit;
                 break;
@@ -399,15 +399,15 @@ exit:
         free(registered_functions[i].func.arg_data);
     }
     freeaddrinfo(client_sock_servinfo);
-    /*  Close the connection that we created in rpcInit */
+    // close the binder connection that we created in rpcInit
     close(server_to_binder_sockfd);
-    //printf("rpcExecute has not been implemented yet.\n");
-    return -1;
+    return 0;
 };
 
 // called by the client to gracefully terminate the system
+// TODO: what are possible error conditions for this function?
 int rpcTerminate(){
-    // connect to the binder if have not done so already
+    // connect to the binder if have not done so already (ex. if not done any rpcCall)
     if (client_to_binder_sockfd == -1) {
         client_to_binder_sockfd = binder_socket_setup();
         if (client_to_binder_sockfd < 0) {
@@ -419,8 +419,10 @@ int rpcTerminate(){
     struct message * out_msg = create_message_frame(0, BINDER_TERMINATE, 0);
     send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame_and_data(out_msg);
+
+    // close the connection since the binder will terminate once all the servers are terminated
     close(client_to_binder_sockfd);
 
-    //printf("rpcTerminate has not been implemented yet.\n");
-    return -1;
+    // termination happened successfully
+    return 0;
 }

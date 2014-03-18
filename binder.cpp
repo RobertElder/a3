@@ -248,23 +248,31 @@ int main(void) {
                 destroy_message_frame_and_data(msg);
                 break;
             } case BINDER_TERMINATE: {
-                //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
-                /*  Terminate all the waiting servers */
+                print_with_flush(CONTEXT, "Binder got the terminate msg from a client.\n");
+
+                // Terminate all connected servers
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
                 for(vector<struct server>::iterator it = registered_servers.begin(); it != registered_servers.end(); it++){
                     int sockfd = (*it).sockfd;
                     send_message(sockfd, out_msg);
+                    // TODO: need to wait to make sure the server has terminated
+                    // maybe wait until a 0 byte receive from the socket?
+                    // i.e. same way we should be detecting server termination otherwise
                     FD_CLR(sockfd, &client_fds);
                     close(sockfd);
                 }
                 destroy_message_frame_and_data(out_msg);
-                /*  Clean up connection from client */
+
+                // clean up connection from client
                 FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
+
+                // clean up extra memory
                 destroy_message_frame_and_data(in_msg);
                 for(unsigned int i = 0; i < func_loc_map.size(); i++) {
                     free(func_loc_map[i].func.arg_data);
                 }
+
                 print_with_flush(CONTEXT, "Exiting binder...\n");
                 return 0;
                 break;
@@ -295,6 +303,5 @@ int main(void) {
         }
         destroy_message_frame_and_data(in_msg);
     }
-
     return 0;
 }
