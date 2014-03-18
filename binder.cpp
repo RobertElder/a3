@@ -85,8 +85,6 @@ struct location find_func_server(struct function_prototype func) {
         struct function_prototype temp = func_loc_map[i].func;
         if (strcmp(temp.name, func.name) != 0) continue;
         if (temp.arg_len != func.arg_len) continue;
-        printf("%d %d", temp.arg_len, func.arg_len);
-        fflush(stdout);
         if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
         matches.push_back(func_loc_map[i].serv);
     }

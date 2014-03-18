@@ -1,10 +1,18 @@
 #include "server_functions.h"
+#include "messages.h"
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
+#include <stdlib.h>
 
 int f0_Skel(int *argTypes, void **args) {
   printf("Server successfully called f0_skel.\n");
   fflush(stdout);
+  struct function_prototype f = create_function_prototype((char*)"", argTypes);
+  assert(get_num_args_inputs(f) == 2);
+  assert(get_num_args_outputs(f) == 1);
+  *((int*)get_nth_args_array(f, args, 0, ARG_OUTPUT)) = f0(*((int*)get_nth_args_array(f, args, 0, ARG_INPUT)), *((int*)get_nth_args_array(f, args, 1, ARG_INPUT)));
+  free(f.arg_data);
   return 0;
 }
 

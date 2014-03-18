@@ -95,3 +95,6 @@ void deserialize_args(struct function_prototype , char * , void ** );
 void destroy_args_array(struct function_prototype , void ** );
 void ** create_empty_args_array(struct function_prototype );
 void print_args(char * , struct function_prototype , void **);
+int get_num_args_inputs(struct function_prototype f);
+int get_num_args_outputs(struct function_prototype f);
+void * get_nth_args_array(struct function_prototype f, void ** args, int n, int data_direction);

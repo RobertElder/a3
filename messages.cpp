@@ -367,6 +367,42 @@ int get_args_buffer_size(struct function_prototype f){
     }
 }
 
+int get_num_args_inputs(struct function_prototype f){
+    /*  Returns the total number of input fields in the arg type array */
+    int num = 0;
+    for(int i = 0; i < f.arg_len; i++){
+        if(f.arg_data[i] & (1 << ARG_INPUT)){
+            num++;
+        }
+    }
+    return num;
+}
+
+int get_num_args_outputs(struct function_prototype f){
+    /*  Returns the total number of output fields in the arg type array */
+    int num = 0;
+    for(int i = 0; i < f.arg_len; i++){
+        if(f.arg_data[i] & (1 << ARG_OUTPUT)){
+            num++;
+        }
+    }
+    return num;
+}
+
+void * get_nth_args_array(struct function_prototype f, void ** args, int n, int data_direction){
+    int num = 0;
+    for(int i = 0; i < f.arg_len; i++){
+        if(f.arg_data[i] & (1 << data_direction)){
+            if(num == n){
+                return args[i];
+            }
+            num++;
+        }
+    }
+    assert(0 && "nth thing not found");
+    return 0;
+}
+
 void print_args(char * context, struct function_prototype f, void ** args){
     print_with_flush(context, "^^^^^^^^ BEGIN args ^^^^^^\n");
     for(int i = 0; i < f.arg_len; i++){

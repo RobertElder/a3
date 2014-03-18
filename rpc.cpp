@@ -317,6 +317,10 @@ int rpcCall(char* name, int* argTypes, void** args) {
     send_message(client_to_server_sockfd, args_msg);
     destroy_message_frame_and_data(args_msg);
 
+    struct message * return_msg = recv_message(client_to_server_sockfd);
+    deserialize_args(f, (char*)return_msg->data, args);
+    destroy_message_frame_and_data(return_msg);
+
     free(f.arg_data);
     freeaddrinfo(servinfo);
     destroy_message_frame_and_data(msg);
@@ -324,7 +328,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
     //print_with_flush(context_str, "Called %s port %d.\n",loc.hostname, loc.port);
     close(client_to_server_sockfd);
     // return 0 after sending the req
-    return -1;
+    return 0;
 };
 
 int rpcCacheCall(char* name, int* argTypes, void** args){
@@ -427,7 +431,14 @@ int rpcExecute(){
                 memcpy(arg_data_buffer, f.arg_data, sizeof(int) * f.arg_len);
                 arg_data_buffer[f.arg_len] = 0;
                 skeleton skel = get_function_skeleton(f);
+                /*  Call the actual function */
                 skel(arg_data_buffer, args);
+                /*  Serialize the arguments to send back the output */
+                int * serialized_output = serialize_args(f, args);
+                struct message * return_msg = create_message_frame(get_args_buffer_size(f), FUNCTION_ARGS, serialized_output);
+                send_message(m_and_fd.fd, return_msg);
+                destroy_message_frame_and_data(return_msg);
+
                 free(arg_data_buffer);
                 destroy_args_array(f, args);
                 free(f.arg_data);
