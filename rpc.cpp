@@ -16,11 +16,10 @@
 
 #define BACKLOG 10
 
-
-int server_to_binder_sockfd;
 /*  Declared in global_state.h */
 const char * context_str;
 
+int server_to_binder_sockfd;
 int server_max_fd = 0;
 fd_set server_connection_fds;
 fd_set server_listener_fds;
@@ -28,6 +27,7 @@ struct addrinfo * server_to_client_addrinfo = NULL;
 
 struct addrinfo * client_sock_servinfo;
 
+// output: the socket file decriptor
 int binder_socket_setup(char * port, char * address){
     struct addrinfo hints, *servinfo;
     int binder_sockfd;
@@ -109,7 +109,6 @@ int server_to_clients_setup(){
             /* Flush the output so we can read it from the file */
             fflush(stdout);
         }
-
         break;
     }
 
@@ -118,7 +117,6 @@ int server_to_clients_setup(){
         return 2;
     }
 
-
     if (listen(sockfd, BACKLOG) == -1) {
         perror("listen");
         exit(1);
@@ -126,8 +124,7 @@ int server_to_clients_setup(){
 
     FD_SET(sockfd, &server_connection_fds);
     FD_SET(sockfd, &server_listener_fds);
-    if(server_max_fd < sockfd)
-        server_max_fd = sockfd;
+    if(server_max_fd < sockfd) server_max_fd = sockfd;
 
     return 0;
 }
@@ -146,7 +143,6 @@ int rpcInit(){
 
     FD_ZERO(&server_connection_fds);
     FD_ZERO(&server_listener_fds);
-    // TODO: should be BINDER port and address
     char * port = getenv ("BINDER_PORT");
     char * address = getenv ("BINDER_ADDRESS");
     //printf("Running rpcInit for server with binder BINDER_ADDRESS: %s\n", address);
@@ -167,11 +163,11 @@ int rpcInit(){
     }
 
     //printf("rpcInit has not been implemented yet.\n");
-    // if get here, everything should have been et up correctly, return 0
-    return -1;
+    // if get here, everything should have been set up correctly, return 0
+    return 0;
 };
 
-int rpcCall(char* name, int* argTypes, void** args){
+int rpcCall(char* name, int* argTypes, void** args) {
     /* First, note that the integer returned is the result of executing the rpcCall function, not the
      * result of the procedure that the rpcCall was executing. That is, if the rpcCall failed (e.g. if there
      * was no server that provided the desired procedure), that would be indicated by the integer result.
@@ -208,7 +204,6 @@ int rpcCall(char* name, int* argTypes, void** args){
     //printf("rpcCall has not been implemented yet.\n");
 
     // send a location req msg to the binder
-    // TODO: should be BINDER port and address
     char * port = getenv ("BINDER_PORT");
     char * address = getenv ("BINDER_ADDRESS");
     int binder_sockfd = binder_socket_setup(port, address);
@@ -332,18 +327,18 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
 
 int rpcRegister(char* name, int* argTypes, skeleton f){
     /* This function does two key things. It calls the binder, informing it that a server procedure with the
-    indicated name and list of argument types is available at this server. The result returned is 0 for a
-    successful registration, positive for a warning (e.g., this is the same as some previously registered
-    procedure), or negative for failure (e.g., could not locate binder). The function also makes an entry
-    in a local database, associating the server skeleton with the name and list of argument types. The
-rst two parameters are the same as those for the rpcCall function. The third parameter is the
-    address of the server skeleton, which corresponds to the server procedure that is being registered.
-    The skeleton function returns an integer to indicate if the server function call executes correctly
-    or not. In the normal case, it will return zero. In case of an error it will return a negative value
-    meaning that the server function execution failed (for example, wrong arguments). In this case,
-    the RPC library at the server side should return an RPC failure message to the client. */
+        indicated name and list of argument types is available at this server. The result returned is 0 for a
+        successful registration, positive for a warning (e.g., this is the same as some previously registered
+        procedure), or negative for failure (e.g., could not locate binder). The function also makes an entry
+        in a local database, associating the server skeleton with the name and list of argument types. The
+        first two parameters are the same as those for the rpcCall function. The third parameter is the
+        address of the server skeleton, which corresponds to the server procedure that is being registered.
+        The skeleton function returns an integer to indicate if the server function call executes correctly
+        or not. In the normal case, it will return zero. In case of an error it will return a negative value
+        meaning that the server function execution failed (for example, wrong arguments). In this case,
+        the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
-    
+
     /*  Send a message with the location */
     struct location loc;
     char * hostname = get_fully_qualified_hostname();
@@ -362,6 +357,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     out_msg->data = (int*)malloc(out_msg->length);
     serialize_function_prototype(pro, out_msg->data);
     send_message(server_to_binder_sockfd, out_msg);
+
     free(out_msg->data);
     free(pro.arg_data);
     destroy_message_frame(out_msg);

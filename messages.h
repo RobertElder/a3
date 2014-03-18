@@ -55,6 +55,11 @@ struct function_prototype {
     int * arg_data;
 };
 
+struct func_loc_pair {
+    struct location loc;
+    struct function_prototype func;
+};
+
 struct message * recv_message(int);
 void send_message(int, struct message *);
 struct message * create_message_frame(int, enum message_type, int *);

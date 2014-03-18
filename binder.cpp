@@ -23,9 +23,9 @@
 #define CONTEXT "Binder"
 
 using namespace std;
+vector<struct func_loc_pair> func_loc_map;
 
-void *get_in_addr(struct sockaddr *sa)
-{
+void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
         return &(((struct sockaddr_in*)sa)->sin_addr);
     }
@@ -33,9 +33,36 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+int argtypescmp(int * arg_types, int * arg_types2) {
+    return 0;
+}
+
+struct location find_func_server(struct function_prototype func) {
+    // iterate over the func to loc map to find all locs for the target func
+    vector<struct location> matches;
+    u_int i;
+    for(i = 0; i < func_loc_map.size(); i++) {
+        struct function_prototype temp = func_loc_map[i].func;
+        if (strcmp(temp.name, func.name) != 0) continue;
+        if (temp.arg_len != func.arg_len) continue;
+        if (argtypescmp(temp.arg_data, func.arg_data) != 0) continue;
+        matches.push_back(func_loc_map[i].loc);
+    }
+    int num_matched = matches.size();
+    if (num_matched == 0) {
+        struct location null_loc;
+        null_loc.port = -1;
+        return null_loc;
+    }
+    if (num_matched == 1) return matches[0];
+
+    // more than one server can execute the function
+    // TODO: want to round robin the servers and figure out which should execute
+    return matches[0];
+}
+
 int main(void) {
     vector<int> server_sockets;
-    vector<struct location> server_locations;
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
@@ -121,9 +148,19 @@ int main(void) {
                 /*  TODO:
                  *  In the future, put this into a data structure that lets us look up in O(1) by the
                  *  name and argTypes (for when the client asks for a method location) */
-                server_locations.push_back(loc);
+                // server_locations.push_back(loc);
+
                 /*  Grab the next message which is a function prototype  */
-                destroy_message_frame_and_data(recv_message(m_and_fd.fd));
+                // deserialize the received message
+                struct message * msg = recv_message(m_and_fd.fd);
+                struct function_prototype func = deserialize_function_prototype(msg->data);
+                // use the function prototype struct and pair it up with the location
+                struct func_loc_pair pair;
+                pair.loc = loc;
+                pair.func = func;
+                func_loc_map.push_back(pair);
+                destroy_message_frame_and_data(msg);
+                free(func.arg_data);
                 break;
             } case BINDER_TERMINATE: {
                 //print_with_flush(CONTEXT, "Got a message to terminate from a client.\n");
@@ -143,12 +180,25 @@ int main(void) {
                 return 0;
                 break;
             } case LOC_REQUEST: {
-                assert(server_locations.size());
-                /*  For now just return the first server location */
-                struct location loc = server_locations.at(0);
-                struct message * out_msg = create_message_frame( sizeof(struct location), LOC_SUCCESS, (int*)&loc);
+                // extract the function name and argTypes form the message
+                struct function_prototype func = deserialize_function_prototype(in_msg->data);
+
+                // look up the server that can execute the requested function
+                struct location loc = find_func_server(func);
+
+                if (loc.port == -1) {
+                    // no server can service this request
+                    struct message * msg = create_message_frame(sizeof(int), LOC_FAILURE, (int*)-1);
+                    send_message(m_and_fd.fd, msg);
+                    destroy_message_frame(msg);
+                    break;
+                }
+
+                // return the location to the client
+                struct message * out_msg = create_message_frame(sizeof(struct location), LOC_SUCCESS, (int*)&loc);
                 send_message(m_and_fd.fd, out_msg);
                 destroy_message_frame(out_msg);
+                free(func.arg_data);
                 break;
             } default: {
                 assert(0);
