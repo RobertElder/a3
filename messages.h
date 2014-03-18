@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include "rpc.h"
 
 #define HOSTNAME_BUFFER_LENGTH 300
 #define FUNCTION_NAME_LENGTH 300
@@ -63,6 +64,11 @@ struct server {
 struct func_loc_pair {
     struct server serv;
     struct function_prototype func;
+};
+
+struct func_skel_pair {
+    struct function_prototype func;
+    skeleton skel_function;
 };
 
 struct message * recv_message(int);

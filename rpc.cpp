@@ -9,12 +9,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <vector>
 
 #include "global_state.h"
 #include "messages.h"
 #include "rpc.h"
 
 #define BACKLOG 10
+
+using namespace std;
 
 /*  Declared in global_state.h */
 const char * context_str;
@@ -26,6 +29,8 @@ fd_set server_listener_fds;
 struct addrinfo * server_to_client_addrinfo = NULL;
 
 struct addrinfo * client_sock_servinfo;
+
+vector<struct func_skel_pair> registered_functions;
 
 // output: the socket file decriptor
 int binder_socket_setup(char * port, char * address){
@@ -336,7 +341,7 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
         meaning that the server function execution failed (for example, wrong arguments). In this case,
         the RPC library at the server side should return an RPC failure message to the client. */
     //printf("rpcRegister has not been implemented yet.\n");
-
+    
     /*  Send a message with the location */
     struct location loc;
     char * hostname = get_fully_qualified_hostname();
@@ -356,8 +361,12 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     serialize_function_prototype(pro, out_msg->data);
     send_message(server_to_binder_sockfd, out_msg);
 
+    struct func_skel_pair pair;
+    pair.func = pro;
+    pair.skel_function = f;
+    registered_functions.push_back(pair);
+
     free(out_msg->data);
-    free(pro.arg_data);
     destroy_message_frame(out_msg);
     return -1;
 };
@@ -406,6 +415,9 @@ int rpcExecute(){
     }
 
 exit:
+    for(unsigned int i = 0; i < registered_functions.size(); i++){
+        free(registered_functions[i].func.arg_data);
+    }
     freeaddrinfo(client_sock_servinfo);
     /*  Close the connection that we created in rpcInit */
     close(server_to_binder_sockfd);
