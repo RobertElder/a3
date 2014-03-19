@@ -21,9 +21,9 @@ export BINDER_PORT=`cat binderoutput | tail -n 1 | sed 's/BINDER_PORT //'`
 echo "Binder started..."
 for i in {1..1}
 do
-    valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./server &
+    valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server &
 done
 #  Wait a couple seconds for the servers to register
 sleep 3
-valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./client
+valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./custom_client
 #

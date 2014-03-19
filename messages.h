@@ -82,7 +82,6 @@ int get_port_from_addrinfo(struct addrinfo *);
 void serialize_function_prototype(struct function_prototype, int *);
 void print_function_prototype(char *, struct function_prototype);
 struct function_prototype deserialize_function_prototype(int * );
-struct function_prototype serialize_function_prototype(int *);
 struct function_prototype create_function_prototype(char *, int *);  /*  Translate encapsulate in something that we can put in a vector */
 
 

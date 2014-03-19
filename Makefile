@@ -1,22 +1,31 @@
 FLAGS=-Wall -Werror -g
-test: client binder server
+test: client binder server custom_client custom_server
 	/bin/bash do-test.sh
-librpc.a: librpc.o
-	ar rcs librpc.a librpc.o
-messages.o:  messages.cpp messages.h
-	g++ $(FLAGS) -c -o messages.o messages.cpp
-librpc.o:  rpc.cpp rpc.h
-	g++ $(FLAGS) -c -o librpc.o rpc.cpp
-client: librpc.a client1.cpp messages.o
-	g++ $(FLAGS) -L. messages.o client1.cpp -lrpc -o client
-binder: binder.h binder.cpp messages.o
-	g++ $(FLAGS) -L. messages.o binder.cpp -lrpc -o binder
-server_functions.o: server_functions.h server_functions.cpp
-	g++ $(FLAGS) -g -c -o server_functions.o server_functions.cpp
-server_function_skels.o: server_function_skels.h server_function_skels.cpp
-	g++ $(FLAGS) -c -o server_function_skels.o server_function_skels.cpp
-server: server.cpp server_functions.o server_function_skels.o librpc.a messages.o
-	g++ $(FLAGS) -L. server.cpp server_functions.o server_function_skels.o messages.o -lrpc -o server
+librpc.a: rpc.o messages.o
+	ar rcs librpc.a rpc.o
+	ar rcs librpc.a messages.o
+rpc.o: rpc.cpp rpc.h
+	g++ $(FLAGS) -c rpc.cpp -o rpc.o
+messages.o: messages.cpp messages.h
+	g++ $(FLAGS) -c messages.cpp -o messages.o
+binder: binder.h binder.cpp librpc.a
+	g++ $(FLAGS) -L. binder.cpp -lrpc -o binder
+client: librpc.a client1.c
+	g++ -w -L. client1.c -lrpc -o client
+server_functions.o: server_functions.h server_functions.c
+	g++ -g -c -o server_functions.o server_functions.c
+server_function_skels.o: server_function_skels.h server_function_skels.c
+	g++ -c -o server_function_skels.o server_function_skels.c
+server: server.c server_functions.o server_function_skels.o librpc.a
+	g++ -w -L. server.c server_functions.o server_function_skels.o -lrpc -o server
+custom_client: librpc.a custom_client.cpp
+	g++ $(FLAGS) -L. custom_client.cpp -lrpc -o custom_client
+custom_server_functions.o: custom_server_functions.h custom_server_functions.cpp
+	g++ $(FLAGS) -g -c -o custom_server_functions.o custom_server_functions.cpp
+custom_server_function_skels.o: custom_server_function_skels.h custom_server_function_skels.cpp
+	g++ $(FLAGS) -c -o custom_server_function_skels.o custom_server_function_skels.cpp
+custom_server: custom_server.cpp custom_server_functions.o custom_server_function_skels.o librpc.a 
+	g++ $(FLAGS) -L. custom_server.cpp custom_server_functions.o custom_server_function_skels.o -lrpc -o custom_server
 clean:
-	rm *.o *.a client binderoutput binder server
+	rm *.o *.a client custom_client binderoutput binder server custom_server
 
