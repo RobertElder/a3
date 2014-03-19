@@ -28,9 +28,8 @@ struct message * recv_message(int sockfd){
     //printf("Attempting to receive message length data (%d bytes)...\n", (int)sizeof(int));
     bytes_received = recv(sockfd, &(received_message->length), sizeof(int), 0);
 
-    if (bytes_received == -1) perror("Error in recv_message getting length.");
-
-    if(bytes_received == 0){
+    if (bytes_received <= 0) {
+        // node on the other end terminated, return here to indicate that the connection should close
         destroy_message_frame(received_message);
         return 0;
     }
@@ -49,6 +48,12 @@ struct message * recv_message(int sockfd){
     //printf("Attempting to receive message type data (%d bytes)...\n", (int)sizeof(int));
     bytes_received = recv(sockfd, &(received_message->type), sizeof(int), 0);
 
+    if (bytes_received <= 0) {
+        // node on the other end terminated, return here to indicate that the connection should close
+        destroy_message_frame(received_message);
+        return 0;
+    }
+
     if (bytes_received == -1) perror("Error in recv_message getting type.");
     assert(bytes_received != 0 && "Connection was closed by remote host.");
 
@@ -57,12 +62,13 @@ struct message * recv_message(int sockfd){
     received_message->type = (enum message_type)ntohl(received_message->type);
 
     if(received_message->length > 0){
-        //printf("Attempting to receive message data of length %d...\n",received_message->length);
         bytes_received = recv(sockfd, received_message->data, received_message->length, 0);
-        if (bytes_received == -1) perror("Error in recv_message getting data.");
+        if (bytes_received <= 0) {
+            // node on the other end terminated, return here to indicate that the connection should close
+            destroy_message_frame(received_message);
+            return 0;
+        }
 
-        /*  0 means closed connection */
-        assert(bytes_received != 0);
         /*  Probably never going to happen, but make sure we got the whole int */
         assert(bytes_received == received_message->length);
 
@@ -74,21 +80,23 @@ struct message * recv_message(int sockfd){
     return received_message;
 }
 
-void send_message(int sockfd, struct message * message_to_send){
+int send_message(int sockfd, struct message * message_to_send){
     int message_length = htonl(message_to_send->length);
     int message_type = htonl(message_to_send->type);
     int bytes_sent;
 
     //printf("Attempting to send message length data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->length);
-    if((bytes_sent = send(sockfd, &message_length, sizeof(int), 0)) == -1){
+    if ((bytes_sent = send(sockfd, &message_length, sizeof(int), 0)) == -1) {
         perror("Error in send_message sending length.\n");
+        return -1;
     }
 
     assert(bytes_sent == sizeof(int));
 
     //printf("Attempting to send message type data (%d bytes), value is %d...\n", (int)sizeof(int), message_to_send->type);
-    if((bytes_sent = send(sockfd, &message_type, sizeof(int), 0)) == -1){
+    if ((bytes_sent = send(sockfd, &message_type, sizeof(int), 0)) == -1) {
         perror("Error in send_message sending type.\n");
+        return -1;
     }
 
     assert(bytes_sent == sizeof(int));
@@ -97,19 +105,21 @@ void send_message(int sockfd, struct message * message_to_send){
     assert(message_to_send->length % sizeof(int) == 0);
 
     u_int i;
-    for(i = 0; i < message_to_send->length % sizeof(int); i++){
+    for (i = 0; i < message_to_send->length % sizeof(int); i++) {
         message_to_send->data[i] = htonl(message_to_send->data[i]);
     }
 
-    if(message_to_send->length > 0){
+    if (message_to_send->length > 0){
         //printf("Attempting to send %d bytes of data...\n", message_to_send->length);
         fflush(stdout);
         if((bytes_sent = send(sockfd, message_to_send->data, message_to_send->length, 0)) == -1){
             perror("Error in send_message sending data.\n");
+            return -1;
         }
 
         assert(bytes_sent == message_to_send->length);
     }
+    return 0;
 }
 
 struct message * create_message_frame(int len, enum message_type type, int * d){
@@ -166,9 +176,16 @@ struct message_and_fd multiplexed_recv_message(int * max_fd, fd_set * client_fds
             }else if (FD_ISSET(i, &updated_fds)){
                 //printf("Accepting incomming data.\n");
                 struct message_and_fd rtn;
+                rtn.fd = i;
                 rtn.message = recv_message(i);
-                if(rtn.message){
-                    rtn.fd = i;
+
+                if (rtn.message){
+                    return rtn;
+                } else {
+                    // the node on the other end of this socket terminated or went down
+                    close(i);
+                    FD_CLR(i, client_fds);
+                    // inform caller of the termination in case clean up is necessary
                     return rtn;
                 }
             }

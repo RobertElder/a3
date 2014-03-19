@@ -5,7 +5,7 @@ librpc.a: librpc.o
 	ar rcs librpc.a librpc.o
 messages.o:  messages.cpp messages.h
 	g++ $(FLAGS) -c -o messages.o messages.cpp
-librpc.o:  rpc.cpp rpc.h
+librpc.o:  rpc.cpp rpc.h messages.o
 	g++ $(FLAGS) -c -o librpc.o rpc.cpp
 client: librpc.a client1.cpp messages.o
 	g++ $(FLAGS) -L. messages.o client1.cpp -lrpc -o client
