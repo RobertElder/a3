@@ -134,8 +134,8 @@ int server_to_clients_setup() {
             perror("getsockname");
         }else{
             char * hostname = get_fully_qualified_hostname();
-            printf("Server available on %s\n", hostname);
-            printf("Server listening on %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
+            //printf("Server available on %s\n", hostname);
+            //printf("Server listening on %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
             free(hostname);
             /* Flush the output so we can read it from the file */
             fflush(stdout);
@@ -185,7 +185,7 @@ int rpcInit() {
 
 // called by the client to execute a server function
 int rpcCall(char* name, int* argTypes, void** args) {
-    print_with_flush(context_str, "Client wants to execute function: %s\n", name);
+    //print_with_flush(context_str, "Client wants to execute function: %s\n", name);
 
     // connect to the binder if have not done so already
     if (client_to_binder_sockfd == -1) {
@@ -222,7 +222,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
     // retrieve server identifier and port from the message
     struct location loc;
     memcpy(&loc, msg->data, sizeof(loc));
-    print_with_flush(context_str, "Client RPC call got server %s port %d.\n",loc.hostname, loc.port);
+    //print_with_flush(context_str, "Client RPC call got server %s port %d.\n",loc.hostname, loc.port);
     char port_buffer[100] = {0};
     sprintf(port_buffer, "%d", loc.port);
 
@@ -355,7 +355,7 @@ int rpcExecute() {
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type) {
             case SERVER_TERMINATE: {
-                print_with_flush(context_str, "Server got a message from binder to terminate.\n");
+                //print_with_flush(context_str, "Server got a message from binder to terminate.\n");
                 destroy_message_frame_and_data(in_msg);
                 goto exit;
                 break;

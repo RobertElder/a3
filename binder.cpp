@@ -248,7 +248,7 @@ int main(void) {
                 destroy_message_frame_and_data(msg);
                 break;
             } case BINDER_TERMINATE: {
-                print_with_flush(CONTEXT, "Binder got the terminate msg from a client.\n");
+                //print_with_flush(CONTEXT, "Binder got the terminate msg from a client.\n");
 
                 // Terminate all connected servers
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
@@ -273,7 +273,7 @@ int main(void) {
                     free(func_loc_map[i].func.arg_data);
                 }
 
-                print_with_flush(CONTEXT, "Exiting binder...\n");
+                //print_with_flush(CONTEXT, "Exiting binder...\n");
                 return 0;
                 break;
             } case LOC_REQUEST: {

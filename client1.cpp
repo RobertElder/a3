@@ -22,10 +22,10 @@ int main() {
   sprintf(name_buffer, "Client %d", getpid());
   context_str = name_buffer;
 
-  char * port = getenv ("BINDER_PORT");
-  char * address = getenv ("BINDER_ADDRESS");
-  print_with_flush(context_str, "Starting client with BINDER_ADDRESS: %s\n", address);
-  print_with_flush(context_str, "Starting client with BINDER_PORT: %s\n", port);
+  //char * port = getenv ("BINDER_PORT");
+  //char * address = getenv ("BINDER_ADDRESS");
+  //print_with_flush(context_str, "Starting client with BINDER_ADDRESS: %s\n", address);
+  //print_with_flush(context_str, "Starting client with BINDER_PORT: %s\n", port);
 
   /* prepare the arguments for f0 */
   int a0 = 5;
@@ -116,66 +116,56 @@ int main() {
 
   /* rpcCalls */
   int s0 = rpcCall((char *)"f0", argTypes0, args0);
-  /* test the return f0 */
-  print_with_flush(context_str, "EXPECTED return of f0 is: %d\n", a0 + b0);
-  if (s0 >= 0) { 
-    print_with_flush(context_str, "ACTUAL return of f0 is: %d\n", *((int *)(args0[0])));
+  if(s0){
+        print_with_flush(context_str, "Failure in test f0.  Expected %d return code, actual %d.\n", 0, s0);
   }
-  else {
-    print_with_flush(context_str, "Error: %d\n", s0);
+  if ((a0 + b0) != *((int *)(args0[0]))) { 
+    print_with_flush(context_str, "failure in f0 Expected %d, got %d.\n", (a0 + b0) != *((int *)(args0[0])));
   }
   free(args0);
 
 
   int s1 = rpcCall((char *)"f1", argTypes1, args1);
-  /* test the return of f1 */
-  print_with_flush(context_str, "EXPECTED return of f1 is: %ld\n", a1 + b1 * c1 - d1);
-  if (s1 >= 0) { 
-    print_with_flush(context_str, "ACTUAL return of f1 is: %ld\n", *((long *)(args1[0])));
+  if(s1){
+        print_with_flush(context_str, "Failure in test f1.  Expected %d return code, actual %d.\n", 0, s1);
   }
-  else {
-    print_with_flush(context_str, "Error: %d\n", s1);
+  if ((a1 + b1 * c1 - d1) != *((long *)(args1[0]))) { 
+    print_with_flush(context_str, "failure in f1 Expected %ld, got %ld: \n", (a1 + b1 * c1 - d1) ,*((long *)(args1[0])));
   }
   free(args1);
 
 
   int s2 = rpcCall((char *)"f2", argTypes2, args2);
-  /* test the return of f2 */
-  print_with_flush(context_str, "EXPECTED return of f2 is: 31234\n");
-  if (s2 >= 0) {
-    print_with_flush(context_str, "ACTUAL return of f2 is: %s\n", (char *)args2[0]);
+  const char result2[] = "31234";
+  if(s2){
+        print_with_flush(context_str, "Failure in test f2.  Expected %d return code, actual %d.\n", 0, s2);
   }
-  else {
-    print_with_flush(context_str, "Error: %d\n", s2);
+  if (strcmp(result2, (char *)args2[0])) {
+    print_with_flush(context_str, "f2 failure. Expected %s got %s.\n", result2, (char *)args2[0]);
   }
   free(args2);
 
 
   int s3 = rpcCall((char *)"f3", argTypes3, args3);
-  /* test the return of f3 */
-  print_with_flush(context_str, 
-    "EXPECTED return of f3 is: 110 109 108 107 106 105 104 103 102 101 11\n"
-  );
-
-  if (s3 >= 0) {
-    print_with_flush(context_str, "ACTUAL return of f3 is: ");
-    int i;
-    for (i = 0; i < 11; i++) {
-      print_with_flush(context_str, " %ld", *(((long *)args3[0]) + i));
-    }
-    print_with_flush(context_str, "\n");
+  if(s3){
+        print_with_flush(context_str, "Failure in test f3.  Expected %d return code, actual %d.\n", 0, s3);
   }
-  else {
-    print_with_flush(context_str, "Error: %d\n", s3);
-  } 
+
+  long results[] = {110, 109, 108, 107, 106, 105, 104, 103, 102, 101, 11};
+
+  int i;
+  for (i = 0; i < 11; i++) {
+    if(results[i] != *(((long *)args3[0]) + i)){
+        print_with_flush(context_str, "Failure in test f3.  Expected %d, actual %d.\n", results[i], *(((long *)args3[0]) + i));
+    }
+  }
   free(args3);
 
   int s4 = rpcCall((char *)"f4", argTypes4, args4);
   free(args4);
-  /* test the return of f4 */
-  print_with_flush(context_str, "calling f4 to print an non existed file on the server\n");
-  print_with_flush(context_str, "EXPECTED return of f4: some integer other than 0\n");
-  print_with_flush(context_str, "ACTUAL return of f4: %d\n", s4);
+  if(!(s4)){
+      print_with_flush(context_str, "f4 was expecting a non zero response code.  Expected %s, got %d\n","(definitely not 0)", s4);
+  }
 
   /* rpcTerminate */
   //print_with_flush(context_str, "\ndo you want to terminate? y/n: ");
