@@ -62,38 +62,6 @@ void update_run_order(int sockfd) {
     update_run_order(index, sockfd);
 }
 
-// returns 0 if the two argTypes are the same
-// returns -1 if the two argTypes are different
-int argtypescmp(int * arg_types1, int * arg_types2, int len) {
-    int i;
-    for (i = 0; i < len; i++) {
-        int arg1 = arg_types1[i];
-        int arg2 = arg_types2[i];
-
-        // parse the arg into type portion (first 2 bytes) and length (second 2 bytes)
-        int type1 = 0xffff0000 & arg1;
-        int len1 =  0x0000ffff & arg1;
-
-        int type2 = 0xffff0000 & arg2;
-        int len2 = 0x0000ffff & arg2;
-
-        // compare if they are both arrays or scalars
-        if (!((len1 == 0 && len2 == 0) || (len1 > 0 && len2 > 0))) return -1;
-
-        // compare the type portion
-        if (type1 != type2) return -1;
-    }
-    return 0;
-}
-
-// returns 0 if the same; returns -1 if different
-int compare_functions(struct function_prototype f1, struct function_prototype f2) {
-    if (strcmp(f1.name, f2.name) != 0) return -1;
-    if (f1.arg_len != f2.arg_len) return -1;
-    if (argtypescmp(f1.arg_data, f2.arg_data, f1.arg_len) != 0) return -1;
-    return 0;
-}
-
 struct location find_func_server(struct function_prototype func) {
     // iterate over the func to loc map to find all locs for the target func
     vector<struct server> matches;

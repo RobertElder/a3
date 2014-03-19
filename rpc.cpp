@@ -35,22 +35,28 @@ struct addrinfo * client_sock_servinfo;
 
 vector<struct func_skel_pair> registered_functions;
 
-int argtypescmp(int * arg_types1, int * arg_types2, int len) {
-    int i;
-    for (i = 0; i < len; i++) {
-        if (arg_types1[i] != arg_types2[i]) return -1;
+skeleton get_function_skeleton(struct function_prototype func) {
+    for(unsigned int i = 0; i < registered_functions.size(); i++) {
+        struct function_prototype temp = registered_functions[i].func;
+        if (compare_functions(func, temp) == -1) continue;
+        return registered_functions[i].skel_function;
     }
     return 0;
 }
 
-skeleton get_function_skeleton(struct function_prototype func) {
-    for(unsigned int i = 0; i < registered_functions.size(); i++) {
-        struct function_prototype temp = registered_functions[i].func;
-        if (strcmp(temp.name, func.name) != 0) continue;
-        if (temp.arg_len != func.arg_len) continue;
-        if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
-        return registered_functions[i].skel_function;
+// return 1 if the server is registering the same func
+// return 0 if the server is registering a new func
+int register_function(struct func_skel_pair pair) {
+    u_int i;
+    for (i = 0; i < registered_functions.size(); i++) {
+        struct func_skel_pair temp = registered_functions[i];
+        if (compare_functions(pair.func, temp.func) == -1) continue;
+        // the functions have the same name and arguments
+        // override the previous skeleton entry with this new one
+        temp.skel_function = pair.skel_function;
+        return 1;
     }
+    registered_functions.push_back(pair);
     return 0;
 }
 
@@ -201,7 +207,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
         }
     }
 
-    int snd_status;
+    int snd_status = 0;
 
     // send a location req msg to the binder
     struct function_prototype f = create_function_prototype(name, argTypes);
@@ -329,8 +335,12 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
     return -1;
 };
 
-// TODO: still missing various error checking and error code returns
 int rpcRegister(char* name, int* argTypes, skeleton f){
+    // make sure binder connection is active
+    if (server_to_binder_sockfd < 0) return FAIL_CONTACT_BINDER;
+
+    int status = 0;
+
     // get server location
     struct location loc;
     char * hostname = get_fully_qualified_hostname();
@@ -341,7 +351,8 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 
     // register the server with the binder by sending it its location
     struct message * out_msg = create_message_frame(sizeof(struct location), SERVER_REGISTER, (int*)&loc);
-    send_message(server_to_binder_sockfd, out_msg);
+    status = send_message(server_to_binder_sockfd, out_msg);
+    if (status < 0) return FAIL_CONTACT_BINDER;
 
     // register the function prorotype with the binder
     struct function_prototype pro = create_function_prototype(name, argTypes);
@@ -349,19 +360,20 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     out_msg->length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * pro.arg_len;
     out_msg->data = (int*)malloc(out_msg->length);
     serialize_function_prototype(pro, out_msg->data);
-    send_message(server_to_binder_sockfd, out_msg);
+    status = send_message(server_to_binder_sockfd, out_msg);
+    if (status < 0) return FAIL_CONTACT_BINDER;
 
     // locally associate the server skeleton with the function prototype (name and arguments)
     struct func_skel_pair pair;
     pair.func = pro;
     pair.skel_function = f;
-    registered_functions.push_back(pair);
+    // poitive in case of warnings, and 0 otherwise
+    status = register_function(pair);
 
     free(out_msg->data);
     destroy_message_frame(out_msg);
 
-    // registration was successfull
-    return 0;
+    return status;
 };
 
 int rpcExecute() {
