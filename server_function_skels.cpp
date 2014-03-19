@@ -1,36 +1,37 @@
 #include "server_functions.h"
-#include "messages.h"
 #include <stdio.h>
-#include <string.h>
-#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 int f0_Skel(int *argTypes, void **args) {
-  printf("Server successfully called f0_skel.\n");
-  fflush(stdout);
-  struct function_prototype f = create_function_prototype((char*)"", argTypes);
-  assert(get_num_args_inputs(f) == 2);
-  assert(get_num_args_outputs(f) == 1);
-  *((int*)get_nth_args_array(f, args, 0, ARG_OUTPUT)) = f0(*((int*)get_nth_args_array(f, args, 0, ARG_INPUT)), *((int*)get_nth_args_array(f, args, 1, ARG_INPUT)));
-  free(f.arg_data);
+
+  *(int *)args[0] = f0(*(int *)args[1], *(int *)args[2]);
   return 0;
 }
 
 int f1_Skel(int *argTypes, void **args) {
-  printf("Server successfully called f1_skel.\n");
-  fflush(stdout);
+
+  *((long *)*args) = f1( *((char *)(*(args + 1))), 
+        *((short *)(*(args + 2))),
+        *((int *)(*(args + 3))),
+        *((long *)(*(args + 4))) );
+
   return 0;
 }
 
 int f2_Skel(int *argTypes, void **args) {
-  printf("Server successfully called f2_skel.\n");
-  fflush(stdout);
+
+  /* (char *)*args = f2( *((float *)(*(args + 1))), *((double *)(*(args + 2))) ); */
+  void *rtn = f2( *((float *)(*(args + 1))), *((double *)(*(args + 2))) );
+  memcpy(*args, rtn, 100);
+  free(rtn);
+
   return 0;
 }
 
 int f3_Skel(int *argTypes, void **args) {
-  printf("Server successfully called f3_skel.\n");
-  fflush(stdout);
+
+  f3((long *)(*args));
   return 0;
 }
 
@@ -40,8 +41,7 @@ int f3_Skel(int *argTypes, void **args) {
  * server function execution, i.e. file not exist
  */
 int f4_Skel(int *argTypes, void **args) {
-  printf("Server successfully called f4_skel.\n");
-  fflush(stdout);
+
   return -1; /* can not print the file */
 }
 
