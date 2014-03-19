@@ -377,6 +377,13 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 };
 
 int rpcExecute() {
+    int return_code = 0;
+    if (registered_functions.size() == 0) {
+        // there are no registered procedures to serve, exit with -1
+        return_code = -1;
+        goto exit;
+    }
+
     while(1) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(
             &server_max_fd, &server_connection_fds, &server_listener_fds);
@@ -441,13 +448,13 @@ int rpcExecute() {
     }
 
 exit:
-    for(unsigned int i = 0; i < registered_functions.size(); i++){
+    for (unsigned int i = 0; i < registered_functions.size(); i++){
         free(registered_functions[i].func.arg_data);
     }
     freeaddrinfo(client_sock_servinfo);
     // close the binder connection that we created in rpcInit
     close(server_to_binder_sockfd);
-    return 0;
+    return return_code;
 };
 
 // called by the client to gracefully terminate the system
