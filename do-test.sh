@@ -22,11 +22,11 @@ export BINDER_ADDRESS=${BINDER_ADDRESS}
 export BINDER_PORT=${BINDER_PORT}
 echo "Binder started..."
 HOSTS=("ubuntu1204-002" "ubuntu1204-004" "ubuntu1204-006")
-for i in {1..1}
+for i in {1..10}
 do
     host=${HOSTS[$RANDOM % 3]}
     echo "Launching server on host ${host}"
-    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server &" &
+    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server" &
     sleep 1
     ./server &
 done
