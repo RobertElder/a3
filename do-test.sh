@@ -19,11 +19,17 @@ while [ `cat binderoutput | grep BINDER_ADDRESS | wc -l` -lt 1 ]; do :; done
 export BINDER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/BINDER_ADDRESS //'`
 export BINDER_PORT=`cat binderoutput | tail -n 1 | sed 's/BINDER_PORT //'`
 echo "Binder started..."
-for i in {1..1}
+for i in {1..2}
 do
     valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server &
+    ./server &
 done
 #  Wait a couple seconds for the servers to register
-sleep 3
+sleep 2
+echo "Launching custom client..."
+#  Run out custom client
 valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./custom_client
-#
+#  Run the client provided in the assignemnt code
+echo "Launching assignment verion of client..."
+echo "y" | ./client
+echo "\n"

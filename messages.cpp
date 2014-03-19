@@ -441,11 +441,14 @@ int * serialize_args(struct function_prototype f, void ** args){
     return (int*)buffer;
 }
 
-void deserialize_args(struct function_prototype f, char * serialized_args, void ** deserialized_args){
+void deserialize_args(struct function_prototype f, char * serialized_args, void ** deserialized_args, int output_or_input){
     /*  De-serialize a serialized args array into a pre-allocated array with the correct array lengths (like that found in an rpcCall) */
     int offset = 0;
     for(int i = 0; i < f.arg_len; i++){
-        memcpy( ((void**)deserialized_args)[i], &serialized_args[offset], get_one_args_array_size(f.arg_data[i]));
+        /*  Only do the copy on the input/out arguments or both if indicated */
+        if(f.arg_data[i] & output_or_input){
+            memcpy( ((void**)deserialized_args)[i], &serialized_args[offset], get_one_args_array_size(f.arg_data[i]));
+        }
         offset += get_one_args_array_size(f.arg_data[i]);
     }
 }
@@ -455,6 +458,7 @@ void ** create_empty_args_array(struct function_prototype f){
     void ** args = (void **)malloc(f.arg_len * sizeof(void *));
     for(int i = 0; i < f.arg_len; i++){
         args[i] = malloc(get_one_args_array_size(f.arg_data[i]));
+        memset(args[i], 0, get_one_args_array_size(f.arg_data[i]));
     }
     return args;
 }

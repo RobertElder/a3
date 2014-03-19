@@ -20,7 +20,7 @@
 using namespace std;
 
 /*  Declared in global_state.h */
-const char * context_str;
+const char * context_str = 0;
 
 // socket fds to connect the server or the client to the binder
 int server_to_binder_sockfd = -1;
@@ -286,7 +286,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
     if (snd_status < 0) return FAIL_CONTACT_SERVER;
 
     struct message * return_msg = recv_message(client_to_server_sockfd);
-    deserialize_args(f, (char*)return_msg->data, args);
+    deserialize_args(f, (char*)return_msg->data, args, (1 << ARG_OUTPUT));
     destroy_message_frame_and_data(return_msg);
 
     free(f.arg_data);
@@ -382,7 +382,7 @@ int rpcExecute() {
                 struct function_prototype f = deserialize_function_prototype((int*)(prototype_msg->data));
                 //print_function_prototype((char *)context_str, f);
                 void ** args = create_empty_args_array(f);
-                deserialize_args(f, (char*)args_msg->data, args);
+                deserialize_args(f, (char*)args_msg->data, args, ((1 << ARG_INPUT) | (1 << ARG_OUTPUT)));
                 //print_args((char *)context_str, f, args);
                 /*  Now find out which function we're actually calling and call it */
                 int * arg_data_buffer = (int*) malloc((f.arg_len + 1) * sizeof(int));

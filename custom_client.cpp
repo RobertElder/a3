@@ -171,8 +171,6 @@ int main() {
   //print_with_flush(context_str, "\ndo you want to terminate? y/n: ");
   //if (getchar() == 'y')
   free(return2);
-  sleep(1);
-  rpcTerminate();
   free(lol);
 
   /* end of client.c */
