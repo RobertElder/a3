@@ -18,12 +18,16 @@ enum message_type {
     LOC_FAILURE,
     EXECUTE,
     FUNCTION_PROTOTYPE,
-    FUNCTION_ARGS
+    FUNCTION_ARGS,
+    FUNC_FAILURE,
+    FUNC_NOT_FOUND
 };
 
 #define FAIL_CONTACT_BINDER -1
 #define NO_AVAILABLE_SERVER -2
 #define FAIL_CONTACT_SERVER -3
+#define SERVER_FUNC_NOT_FOUND -4
+#define FUNC_EXEC_FAILURE -5
 
 struct message{
     /*  This is the length of the message body without the first 8 bytes for the type and length field */

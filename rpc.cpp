@@ -51,7 +51,6 @@ skeleton get_function_skeleton(struct function_prototype func) {
         if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
         return registered_functions[i].skel_function;
     }
-    assert(0);
     return 0;
 }
 
@@ -285,7 +284,13 @@ int rpcCall(char* name, int* argTypes, void** args) {
     destroy_message_frame_and_data(args_msg);
     if (snd_status < 0) return FAIL_CONTACT_SERVER;
 
+    // wait for server to respond back
     struct message * return_msg = recv_message(client_to_server_sockfd);
+    int return_code = 0;
+
+    if (return_msg->type == FUNC_NOT_FOUND) return_code = SERVER_FUNC_NOT_FOUND;
+    else if (return_msg->type == FUNC_FAILURE) return_code = FUNC_EXEC_FAILURE;
+
     deserialize_args(f, (char*)return_msg->data, args);
     destroy_message_frame_and_data(return_msg);
 
@@ -295,8 +300,8 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     //print_with_flush(context_str, "Called %s port %d.\n",loc.hostname, loc.port);
     close(client_to_server_sockfd);
-    // return 0 after sending the req
-    return 0;
+
+    return return_code;
 };
 
 int rpcCacheCall(char* name, int* argTypes, void** args){
@@ -384,16 +389,25 @@ int rpcExecute() {
                 void ** args = create_empty_args_array(f);
                 deserialize_args(f, (char*)args_msg->data, args);
                 //print_args((char *)context_str, f, args);
+
                 /*  Now find out which function we're actually calling and call it */
                 int * arg_data_buffer = (int*) malloc((f.arg_len + 1) * sizeof(int));
                 memcpy(arg_data_buffer, f.arg_data, sizeof(int) * f.arg_len);
                 arg_data_buffer[f.arg_len] = 0;
                 skeleton skel = get_function_skeleton(f);
-                /*  Call the actual function */
-                skel(arg_data_buffer, args);
+
+                message_type msg_type = FUNCTION_ARGS;
+
+                if (skel) {
+                    int status = skel(arg_data_buffer, args);
+                    if (status < 0) msg_type = FUNC_FAILURE;
+                }
+
                 /*  Serialize the arguments to send back the output */
                 int * serialized_output = serialize_args(f, args);
-                struct message * return_msg = create_message_frame(get_args_buffer_size(f), FUNCTION_ARGS, serialized_output);
+                struct message * return_msg = create_message_frame(
+                    get_args_buffer_size(f), skel ? msg_type : FUNC_NOT_FOUND, serialized_output);
+
                 send_message(m_and_fd.fd, return_msg);
                 destroy_message_frame_and_data(return_msg);
 
