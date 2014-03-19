@@ -35,26 +35,33 @@ struct addrinfo * client_sock_servinfo;
 
 vector<struct func_skel_pair> registered_functions;
 
-int argtypescmp(int * arg_types1, int * arg_types2, int len) {
-    int i;
-    for (i = 0; i < len; i++) {
-        if (arg_types1[i] != arg_types2[i]) return -1;
-    }
-    return 0;
-}
-
 skeleton get_function_skeleton(struct function_prototype func) {
     for(unsigned int i = 0; i < registered_functions.size(); i++) {
         struct function_prototype temp = registered_functions[i].func;
-        if (strcmp(temp.name, func.name) != 0) continue;
-        if (temp.arg_len != func.arg_len) continue;
-        if (argtypescmp(temp.arg_data, func.arg_data, func.arg_len) != 0) continue;
+        if (compare_functions(func, temp) == -1) continue;
         return registered_functions[i].skel_function;
     }
     return 0;
 }
 
+// return 1 if the server is registering the same func
+// return 0 if the server is registering a new func
+int register_function(struct func_skel_pair pair) {
+    u_int i;
+    for (i = 0; i < registered_functions.size(); i++) {
+        struct func_skel_pair temp = registered_functions[i];
+        if (compare_functions(pair.func, temp.func) == -1) continue;
+        // the functions have the same name and arguments
+        // override the previous skeleton entry with this new one
+        temp.skel_function = pair.skel_function;
+        return 1;
+    }
+    registered_functions.push_back(pair);
+    return 0;
+}
+
 // output: the socket file decriptor for a connection to the binder
+// returns -1 if there is any error during setup
 int binder_socket_setup(){
     char * port = getenv ("BINDER_PORT");
     char * address = getenv ("BINDER_ADDRESS");
@@ -94,8 +101,10 @@ int binder_socket_setup(){
 }
 
 // set up socket to listen for incoming clients
+// returns a positive integer in case of any failure
+// return 0 if listener socket was set up
 int server_to_clients_setup() {
-    int sockfd;
+    int sockfd = -1;
     struct addrinfo hints;
     int yes=1;
     int rv;
@@ -119,7 +128,7 @@ int server_to_clients_setup() {
 
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
             perror("setsockopt");
-            exit(1);
+            continue;
         }
 
         if (bind(sockfd, server_to_client_addrinfo->ai_addr, server_to_client_addrinfo->ai_addrlen) == -1) {
@@ -129,12 +138,10 @@ int server_to_clients_setup() {
         }
 
         socklen_t len = sizeof(*(server_to_client_addrinfo->ai_addr));
-        if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1){
+        if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1) {
             perror("getsockname");
-        }else{
+        } else {
             char * hostname = get_fully_qualified_hostname();
-            //printf("Server available on %s\n", hostname);
-            //printf("Server listening on %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
             free(hostname);
             /* Flush the output so we can read it from the file */
             fflush(stdout);
@@ -147,9 +154,14 @@ int server_to_clients_setup() {
         return 2;
     }
 
+    if (sockfd == -1) {
+        fprintf(stderr, "Listener socket was not set up for the client.\n");
+        return 1;
+    }
+
     if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen");
-        exit(1);
+        fprintf(stderr, "Cannot liten on the client socket.\n");
+        return 1;
     }
 
     FD_SET(sockfd, &server_connection_fds);
@@ -177,7 +189,6 @@ int rpcInit() {
         return -1;
     }
 
-    //printf("rpcInit has not been implemented yet.\n");
     // if get here, everything should have been set up correctly, return 0
     return 0;
 };
@@ -196,7 +207,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
         }
     }
 
-    int snd_status;
+    int snd_status = 0;
 
     // send a location req msg to the binder
     struct function_prototype f = create_function_prototype(name, argTypes);
@@ -215,7 +226,6 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     // if cannot get the location, return a negative value as a reson/error code
     if (msg->type == LOC_FAILURE) {
-        // TODO: should return the reason code present in the data
         print_with_flush(context_str, "Cannot do rpcCall, LOC_FAILURE.\n");
         destroy_message_frame_and_data(msg);
         return NO_AVAILABLE_SERVER;
@@ -325,8 +335,12 @@ int rpcCacheCall(char* name, int* argTypes, void** args){
     return -1;
 };
 
-// TODO: still missing various error checking and error code returns
 int rpcRegister(char* name, int* argTypes, skeleton f){
+    // make sure binder connection is active
+    if (server_to_binder_sockfd < 0) return FAIL_CONTACT_BINDER;
+
+    int status = 0;
+
     // get server location
     struct location loc;
     char * hostname = get_fully_qualified_hostname();
@@ -337,7 +351,8 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
 
     // register the server with the binder by sending it its location
     struct message * out_msg = create_message_frame(sizeof(struct location), SERVER_REGISTER, (int*)&loc);
-    send_message(server_to_binder_sockfd, out_msg);
+    status = send_message(server_to_binder_sockfd, out_msg);
+    if (status < 0) return FAIL_CONTACT_BINDER;
 
     // register the function prorotype with the binder
     struct function_prototype pro = create_function_prototype(name, argTypes);
@@ -345,22 +360,30 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     out_msg->length = FUNCTION_NAME_LENGTH + sizeof(int) + sizeof(int) * pro.arg_len;
     out_msg->data = (int*)malloc(out_msg->length);
     serialize_function_prototype(pro, out_msg->data);
-    send_message(server_to_binder_sockfd, out_msg);
+    status = send_message(server_to_binder_sockfd, out_msg);
+    if (status < 0) return FAIL_CONTACT_BINDER;
 
     // locally associate the server skeleton with the function prototype (name and arguments)
     struct func_skel_pair pair;
     pair.func = pro;
     pair.skel_function = f;
-    registered_functions.push_back(pair);
+    // poitive in case of warnings, and 0 otherwise
+    status = register_function(pair);
 
     free(out_msg->data);
     destroy_message_frame(out_msg);
 
-    // registration was successfull
-    return 0;
+    return status;
 };
 
 int rpcExecute() {
+    int return_code = 0;
+    if (registered_functions.size() == 0) {
+        // there are no registered procedures to serve, exit with -1
+        return_code = -1;
+        goto exit;
+    }
+
     while(1) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(
             &server_max_fd, &server_connection_fds, &server_listener_fds);
@@ -425,13 +448,13 @@ int rpcExecute() {
     }
 
 exit:
-    for(unsigned int i = 0; i < registered_functions.size(); i++){
+    for (unsigned int i = 0; i < registered_functions.size(); i++){
         free(registered_functions[i].func.arg_data);
     }
     freeaddrinfo(client_sock_servinfo);
     // close the binder connection that we created in rpcInit
     close(server_to_binder_sockfd);
-    return 0;
+    return return_code;
 };
 
 // called by the client to gracefully terminate the system
