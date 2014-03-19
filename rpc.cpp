@@ -55,6 +55,7 @@ skeleton get_function_skeleton(struct function_prototype func) {
 }
 
 // output: the socket file decriptor for a connection to the binder
+// returns -1 if there is any error during setup
 int binder_socket_setup(){
     char * port = getenv ("BINDER_PORT");
     char * address = getenv ("BINDER_ADDRESS");
@@ -94,8 +95,10 @@ int binder_socket_setup(){
 }
 
 // set up socket to listen for incoming clients
+// returns a positive integer in case of any failure
+// return 0 if listener socket was set up
 int server_to_clients_setup() {
-    int sockfd;
+    int sockfd = -1;
     struct addrinfo hints;
     int yes=1;
     int rv;
@@ -119,7 +122,7 @@ int server_to_clients_setup() {
 
         if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
             perror("setsockopt");
-            exit(1);
+            continue;
         }
 
         if (bind(sockfd, server_to_client_addrinfo->ai_addr, server_to_client_addrinfo->ai_addrlen) == -1) {
@@ -129,12 +132,10 @@ int server_to_clients_setup() {
         }
 
         socklen_t len = sizeof(*(server_to_client_addrinfo->ai_addr));
-        if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1){
+        if (getsockname(sockfd, ((struct sockaddr *)server_to_client_addrinfo->ai_addr), &len) == -1) {
             perror("getsockname");
-        }else{
+        } else {
             char * hostname = get_fully_qualified_hostname();
-            //printf("Server available on %s\n", hostname);
-            //printf("Server listening on %d\n", get_port_from_addrinfo(server_to_client_addrinfo));
             free(hostname);
             /* Flush the output so we can read it from the file */
             fflush(stdout);
@@ -147,9 +148,14 @@ int server_to_clients_setup() {
         return 2;
     }
 
+    if (sockfd == -1) {
+        fprintf(stderr, "Listener socket was not set up for the client.\n");
+        return 1;
+    }
+
     if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen");
-        exit(1);
+        fprintf(stderr, "Cannot liten on the client socket.\n");
+        return 1;
     }
 
     FD_SET(sockfd, &server_connection_fds);
@@ -177,7 +183,6 @@ int rpcInit() {
         return -1;
     }
 
-    //printf("rpcInit has not been implemented yet.\n");
     // if get here, everything should have been set up correctly, return 0
     return 0;
 };
@@ -215,7 +220,6 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     // if cannot get the location, return a negative value as a reson/error code
     if (msg->type == LOC_FAILURE) {
-        // TODO: should return the reason code present in the data
         print_with_flush(context_str, "Cannot do rpcCall, LOC_FAILURE.\n");
         destroy_message_frame_and_data(msg);
         return NO_AVAILABLE_SERVER;
