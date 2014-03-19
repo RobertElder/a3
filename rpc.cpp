@@ -55,7 +55,7 @@ skeleton get_function_skeleton(struct function_prototype func) {
     return 0;
 }
 
-// output: the socket file decriptor
+// output: the socket file decriptor for a connection to the binder
 int binder_socket_setup(){
     char * port = getenv ("BINDER_PORT");
     char * address = getenv ("BINDER_ADDRESS");
@@ -94,7 +94,7 @@ int binder_socket_setup(){
     return binder_sockfd;
 }
 
-// set up socket to listen to clients
+// set up socket to listen for incoming clients
 int server_to_clients_setup() {
     int sockfd;
     struct addrinfo hints;
@@ -184,6 +184,7 @@ int rpcInit() {
 };
 
 // called by the client to execute a server function
+// returns 0 if everything worked out
 int rpcCall(char* name, int* argTypes, void** args) {
     //print_with_flush(context_str, "Client wants to execute function: %s\n", name);
 
@@ -192,9 +193,11 @@ int rpcCall(char* name, int* argTypes, void** args) {
         client_to_binder_sockfd = binder_socket_setup();
         if (client_to_binder_sockfd < 0) {
             fprintf(stderr, "Failed to setup client connection to binder.\n");
-            return -1;
+            return FAIL_CONTACT_BINDER;
         }
     }
+
+    int snd_status;
 
     // send a location req msg to the binder
     struct function_prototype f = create_function_prototype(name, argTypes);
@@ -204,8 +207,9 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     struct message * out_msg = create_message_frame(
         function_prorotype_len , LOC_REQUEST, (int*)serialized_function_prototype);
-    send_message(client_to_binder_sockfd, out_msg);
+    snd_status = send_message(client_to_binder_sockfd, out_msg);
     destroy_message_frame(out_msg);
+    if (snd_status < 0) return FAIL_CONTACT_BINDER;
 
     // receive the server location for the procedure
     struct message * msg = recv_message(client_to_binder_sockfd);
@@ -215,7 +219,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
         // TODO: should return the reason code present in the data
         print_with_flush(context_str, "Cannot do rpcCall, LOC_FAILURE.\n");
         destroy_message_frame_and_data(msg);
-        return -1;
+        return NO_AVAILABLE_SERVER;
     }
     assert(msg->type == LOC_SUCCESS);
 
@@ -237,46 +241,49 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     if ((rv = getaddrinfo(loc.hostname, port_buffer, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
+        return FAIL_CONTACT_SERVER;
     }
 
     if ((client_to_server_sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,
         servinfo->ai_protocol)) == -1) {
         perror("Error in client: socket");
         freeaddrinfo(servinfo);
-        return 1;
+        return FAIL_CONTACT_SERVER;
     }
 
     if (connect(client_to_server_sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
         close(client_to_server_sockfd);
         perror("Error in client: connect");
         freeaddrinfo(servinfo);
-        return 1;
+        return FAIL_CONTACT_SERVER;
     }
 
     if (servinfo == NULL) {
         fprintf(stderr, "Server: failed to connect\n");
         freeaddrinfo(servinfo);
-        return 1;
+        return FAIL_CONTACT_SERVER;
     }
 
     /*  Send a message saying we want to execute stuff */
     struct message * exec_msg = create_message_frame(0, EXECUTE, 0);
-    send_message(client_to_server_sockfd, exec_msg);
+    snd_status = send_message(client_to_server_sockfd, exec_msg);
     destroy_message_frame_and_data(exec_msg);
+    if (snd_status < 0) return FAIL_CONTACT_SERVER;
 
     /*  Send a message with the function prorotype */
     struct message * fcn_msg = create_message_frame(function_prorotype_len, FUNCTION_PROTOTYPE, serialized_function_prototype);
-    send_message(client_to_server_sockfd, fcn_msg);
+    snd_status = send_message(client_to_server_sockfd, fcn_msg);
     destroy_message_frame_and_data(fcn_msg);
     //print_function_prototype((char *)context_str, f);
+    if (snd_status < 0) return FAIL_CONTACT_SERVER;
 
     /*  Send all the arguments */
     int * serialized_args = (int*)serialize_args(f, args);
     //print_args((char *)context_str, f, args);
     struct message * args_msg = create_message_frame(get_args_buffer_size(f), FUNCTION_ARGS, serialized_args);
-    send_message(client_to_server_sockfd, args_msg);
+    snd_status = send_message(client_to_server_sockfd, args_msg);
     destroy_message_frame_and_data(args_msg);
+    if (snd_status < 0) return FAIL_CONTACT_SERVER;
 
     struct message * return_msg = recv_message(client_to_server_sockfd);
     deserialize_args(f, (char*)return_msg->data, args);
@@ -352,6 +359,15 @@ int rpcExecute() {
     while(1) {
         struct message_and_fd m_and_fd = multiplexed_recv_message(
             &server_max_fd, &server_connection_fds, &server_listener_fds);
+
+        // if the receive is due to a termination of the binder, want to clean up
+        // if the receive is due to a termination of a client, want to continue receiving
+        // (socket is already closed and removed by this point)
+        if (!m_and_fd.message) {
+            if (m_and_fd.fd == server_to_binder_sockfd) server_to_binder_sockfd = -1;
+            continue;
+        }
+
         struct message * in_msg = m_and_fd.message;
         switch (in_msg->type) {
             case SERVER_TERMINATE: {
@@ -412,7 +428,7 @@ int rpcTerminate(){
         client_to_binder_sockfd = binder_socket_setup();
         if (client_to_binder_sockfd < 0) {
             fprintf(stderr, "Failed to setup client connection to binder.\n");
-            return -1;
+            return FAIL_CONTACT_BINDER;
         }
     }
 

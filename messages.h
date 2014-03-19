@@ -21,6 +21,10 @@ enum message_type {
     FUNCTION_ARGS
 };
 
+#define FAIL_CONTACT_BINDER -1
+#define NO_AVAILABLE_SERVER -2
+#define FAIL_CONTACT_SERVER -3
+
 struct message{
     /*  This is the length of the message body without the first 8 bytes for the type and length field */
     int length;
@@ -71,7 +75,7 @@ struct func_skel_pair {
 };
 
 struct message * recv_message(int);
-void send_message(int, struct message *);
+int send_message(int, struct message *);
 struct message * create_message_frame(int, enum message_type, int *);
 void destroy_message_frame_and_data(struct message *);
 void destroy_message_frame(struct message *);
