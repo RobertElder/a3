@@ -115,7 +115,7 @@ int main() {
   args4[0] = (void *)lol;
 
   /* rpcCalls */
-  int s0 = rpcCall((char *)"f0", argTypes0, args0);
+  int s0 = rpcCall((char *)"fun0", argTypes0, args0);
   if(s0){
         print_with_flush(context_str, "Failure in test f0.  Expected %d return code, actual %d.\n", 0, s0);
   }
@@ -125,7 +125,7 @@ int main() {
   free(args0);
 
 
-  int s1 = rpcCall((char *)"f1", argTypes1, args1);
+  int s1 = rpcCall((char *)"fun1", argTypes1, args1);
   if(s1){
         print_with_flush(context_str, "Failure in test f1.  Expected %d return code, actual %d.\n", 0, s1);
   }
@@ -135,7 +135,7 @@ int main() {
   free(args1);
 
 
-  int s2 = rpcCall((char *)"f2", argTypes2, args2);
+  int s2 = rpcCall((char *)"fun2", argTypes2, args2);
   const char result2[] = "31234";
   if(s2){
         print_with_flush(context_str, "Failure in test f2.  Expected %d return code, actual %d.\n", 0, s2);
@@ -146,7 +146,7 @@ int main() {
   free(args2);
 
 
-  int s3 = rpcCall((char *)"f3", argTypes3, args3);
+  int s3 = rpcCall((char *)"fun3", argTypes3, args3);
   if(s3){
         print_with_flush(context_str, "Failure in test f3.  Expected %d return code, actual %d.\n", 0, s3);
   }
@@ -161,7 +161,7 @@ int main() {
   }
   free(args3);
 
-  int s4 = rpcCall((char *)"f4", argTypes4, args4);
+  int s4 = rpcCall((char *)"fun4", argTypes4, args4);
   free(args4);
   if(!(s4)){
       print_with_flush(context_str, "f4 was expecting a non zero response code.  Expected %s, got %d\n","(definitely not 0)", s4);

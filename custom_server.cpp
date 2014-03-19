@@ -61,11 +61,11 @@ int main(int argc, char *argv[]) {
   /* 
    * register server functions f0~f4
    */
-  rpcRegister((char *)"f0", argTypes0, *f0_Skel);
-  rpcRegister((char *)"f1", argTypes1, *f1_Skel);
-  rpcRegister((char *)"f2", argTypes2, *f2_Skel);
-  rpcRegister((char *)"f3", argTypes3, *f3_Skel);
-  rpcRegister((char *)"f4", argTypes4, *f4_Skel);
+  rpcRegister((char *)"fun0", argTypes0, *f0_Skel);
+  rpcRegister((char *)"fun1", argTypes1, *f1_Skel);
+  rpcRegister((char *)"fun2", argTypes2, *f2_Skel);
+  rpcRegister((char *)"fun3", argTypes3, *f3_Skel);
+  rpcRegister((char *)"fun4", argTypes4, *f4_Skel);
 
   /* call rpcExecute */
   rpcExecute();
