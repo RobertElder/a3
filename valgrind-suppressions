@@ -1,5 +1,5 @@
 {
-   insert_a_suppression_name_here_1
+   <insert_a_suppression_name_here>
    Memcheck:Leak
    fun:malloc
    fun:nss_parse_service_list
@@ -7,51 +7,25 @@
    fun:__nss_database_lookup
    fun:gaih_inet
    fun:getaddrinfo
-   fun:binder_socket_setup
+   fun:_Z19binder_socket_setupv
+   fun:rpcInit
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:malloc
+   fun:nss_parse_service_list
+   fun:nss_parse_file.constprop.2
+   fun:__nss_database_lookup
+   fun:gaih_inet
+   fun:getaddrinfo
+   fun:_Z19binder_socket_setupv
    fun:rpcCall
    fun:main
 }
 {
-   insert_a_suppression_name_here_2
-   Memcheck:Leak
-   fun:malloc
-   fun:nss_parse_service_list
-   fun:nss_parse_file.constprop.2
-   fun:__nss_database_lookup
-   fun:gaih_inet
-   fun:getaddrinfo
-   fun:binder_socket_setup
-   fun:rpcInit
-   fun:main
-}
-{
-   insert_a_suppression_name_here_3
-   Memcheck:Leak
-   fun:malloc
-   fun:nss_parse_service_list
-   fun:nss_parse_file.constprop.2
-   fun:__nss_database_lookup
-   fun:__nss_hosts_lookup2
-   fun:gethostbyname_r@@GLIBC_2.2.5
-   fun:gethostbyname
-   fun:get_fully_qualified_hostname
-   fun:main
-}
-{
-   insert_a_suppression_name_here_4
-   Memcheck:Leak
-   fun:malloc
-   fun:nss_parse_service_list
-   fun:nss_parse_file.constprop.2
-   fun:__nss_database_lookup
-   fun:gaih_inet
-   fun:getaddrinfo
-   fun:_Z19binder_socket_setupPcS_
-   fun:rpcInit
-   fun:main
-}
-{
-   insert_a_suppression_name_here_5
+   <insert_a_suppression_name_here>
    Memcheck:Leak
    fun:malloc
    fun:nss_parse_service_list
@@ -61,18 +35,5 @@
    fun:gethostbyname_r@@GLIBC_2.2.5
    fun:gethostbyname
    fun:_Z28get_fully_qualified_hostnamev
-   fun:main
-}
-{
-   insert_a_suppression_name_here_6
-   Memcheck:Leak
-   fun:malloc
-   fun:nss_parse_service_list
-   fun:nss_parse_file.constprop.2
-   fun:__nss_database_lookup
-   fun:gaih_inet
-   fun:getaddrinfo
-   fun:_Z19binder_socket_setupPcS_
-   fun:rpcCall
    fun:main
 }
