@@ -16,16 +16,22 @@ valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=fu
 #  Give the binder a second to bind and get address and port
 echo "Waiting for binder to start up..."
 while [ `cat binderoutput | grep BINDER_ADDRESS | wc -l` -lt 1 ]; do :; done
-export BINDER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/BINDER_ADDRESS //'`
-export BINDER_PORT=`cat binderoutput | tail -n 1 | sed 's/BINDER_PORT //'`
+BINDER_ADDRESS=`cat binderoutput | head -n 1 | sed 's/BINDER_ADDRESS //'`
+BINDER_PORT=`cat binderoutput | tail -n 1 | sed 's/BINDER_PORT //'`
+export BINDER_ADDRESS=${BINDER_ADDRESS}
+export BINDER_PORT=${BINDER_PORT}
 echo "Binder started..."
-for i in {1..2}
+for i in {1..5}
 do
-    valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server &
+    HOSTS=("ubuntu1204-002" "ubuntu1204-004" "ubuntu1204-006")
+    host=${HOSTS[$RANDOM % 3]}
+    echo "Launching server on host ${host}"
+    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server &" &
+    sleep 1
     ./server &
 done
 #  Wait a couple seconds for the servers to register
-sleep 2
+sleep 1
 echo "Launching custom client..."
 #  Run out custom client
 valgrind ${SUPPRESSIONS} -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./custom_client
