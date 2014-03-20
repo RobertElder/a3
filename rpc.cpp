@@ -36,6 +36,7 @@ struct addrinfo * server_to_client_addrinfo = NULL;
 struct addrinfo * client_sock_servinfo;
 
 vector<struct func_skel_pair> registered_functions;
+vector<pthread_t> threads;
 
 skeleton get_function_skeleton(struct function_prototype func) {
     for(unsigned int i = 0; i < registered_functions.size(); i++) {
@@ -471,6 +472,14 @@ int rpcExecute() {
                 params->args_msg = args_msg;
 
                 ret = pthread_create(&thread, NULL, execute_routine, (void *)params);
+
+                /*  Don't block as long as we're not already executing 100 threads */
+                if(threads.size() < 100){
+                    threads.push_back(thread);
+                }else{
+                    pthread_join(thread, NULL);
+                }
+                
                 if (ret) fprintf(stderr, "%s\n", "ERROR cannot create a thread to process client");
                 break;
             } default: {
@@ -481,6 +490,9 @@ int rpcExecute() {
     }
 
 exit:
+    for(unsigned int i = 0; i < threads.size(); i++){
+        pthread_join(threads[i], NULL);
+    }
     for (unsigned int i = 0; i < registered_functions.size(); i++){
         free(registered_functions[i].func.arg_data);
     }
