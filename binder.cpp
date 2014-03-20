@@ -288,9 +288,10 @@ int main(void) {
 
                 if (loc.port == -1) {
                     // no server can service this request
-                    struct message * msg = create_message_frame(sizeof(int), LOC_FAILURE, (int*)-1);
+                    struct message * msg = create_message_frame(0, LOC_FAILURE, 0);
                     send_message(m_and_fd.fd, msg);
                     destroy_message_frame(msg);
+                    free(func.arg_data);
                     break;
                 }
 
