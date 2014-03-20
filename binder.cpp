@@ -141,6 +141,7 @@ void terminate_server(int server_index) {
         if (func_loc_map[i].serv.sockfd == serv.sockfd) {
             free(func_loc_map[i].func.arg_data);
             func_loc_map.erase(func_loc_map.begin() + i);
+            i -= 1; // decrement so that elements are not skipped
         }
     }
 }
@@ -150,6 +151,7 @@ int main(void) {
     struct addrinfo hints, *servinfo, *p;
     int yes=1;
     int rv;
+    int termination_state = 0; // 0 == not terminating; 1 == terminating
 
     int max_fd;
     fd_set client_fds;
@@ -224,6 +226,17 @@ int main(void) {
         if (!m_and_fd.message) {
             int index = get_registered_server_index(m_and_fd.fd);
             if (index >= 0) terminate_server(index);
+
+            // exit if binder is in termination mode and there are no more regitered servers
+            if (termination_state == 1 && registered_servers.size() == 0) return 0;
+
+            continue;
+        }
+
+        if (termination_state && get_registered_server_index(m_and_fd.fd) == -1) {
+            // close client connection since we are terminating
+            FD_CLR(m_and_fd.fd, &client_fds);
+            close(m_and_fd.fd);
             continue;
         }
 
@@ -252,33 +265,19 @@ int main(void) {
                 destroy_message_frame_and_data(msg);
                 break;
             } case BINDER_TERMINATE: {
-                //print_with_flush(CONTEXT, "Binder got the terminate msg from a client.\n");
-
-                // Terminate all connected servers
+                // send termination messages to all connected servers
                 struct message * out_msg = create_message_frame(0, SERVER_TERMINATE, 0);
                 for(vector<struct server>::iterator it = registered_servers.begin(); it != registered_servers.end(); it++){
                     int sockfd = (*it).sockfd;
                     send_message(sockfd, out_msg);
-                    // TODO: need to wait to make sure the server has terminated
-                    // maybe wait until a 0 byte receive from the socket?
-                    // i.e. same way we should be detecting server termination otherwise
-                    FD_CLR(sockfd, &client_fds);
-                    close(sockfd);
                 }
                 destroy_message_frame_and_data(out_msg);
 
-                // clean up connection from client
+                // close connection from client
                 FD_CLR(m_and_fd.fd, &client_fds);
                 close(m_and_fd.fd);
 
-                // clean up extra memory
-                destroy_message_frame_and_data(in_msg);
-                for(unsigned int i = 0; i < func_loc_map.size(); i++) {
-                    free(func_loc_map[i].func.arg_data);
-                }
-
-                //print_with_flush(CONTEXT, "Exiting binder...\n");
-                return 0;
+                termination_state = 1;
                 break;
             } case LOC_REQUEST: {
                 // extract the function name and argTypes form the message

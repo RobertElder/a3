@@ -223,6 +223,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     // receive the server location for the procedure
     struct message * msg = recv_message(client_to_binder_sockfd);
+    if (!msg) return FAIL_CONTACT_BINDER;
 
     // if cannot get the location, return a negative value as a reson/error code
     if (msg->type == LOC_FAILURE) {
@@ -296,6 +297,7 @@ int rpcCall(char* name, int* argTypes, void** args) {
 
     // wait for server to respond back
     struct message * return_msg = recv_message(client_to_server_sockfd);
+    if (!return_msg) return FAIL_CONTACT_SERVER;
     int return_code = 0;
 
     if (return_msg->type == FUNC_NOT_FOUND) return_code = SERVER_FUNC_NOT_FOUND;
@@ -407,6 +409,7 @@ int rpcExecute() {
                 //print_with_flush(context_str, "Got a message from a client to execute.\n");
                 struct message * prototype_msg = recv_message(m_and_fd.fd);
                 struct message * args_msg = recv_message(m_and_fd.fd);
+
                 struct function_prototype f = deserialize_function_prototype((int*)(prototype_msg->data));
                 //print_function_prototype((char *)context_str, f);
                 void ** args = create_empty_args_array(f);

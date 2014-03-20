@@ -487,7 +487,7 @@ int argtypescmp(int * arg_types1, int * arg_types2, int len) {
         int type2 = 0xffff0000 & arg2;
         int len2 = 0x0000ffff & arg2;
 
-        // compare if they are both arrays or scalars
+        // compare that they are both arrays or both scalars
         if (!((len1 == 0 && len2 == 0) || (len1 > 0 && len2 > 0))) return -1;
 
         // compare the type portion
