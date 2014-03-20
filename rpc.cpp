@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <vector>
 
+#include <pthread.h>
+
 #include "global_state.h"
 #include "messages.h"
 #include "rpc.h"
@@ -378,6 +380,54 @@ int rpcRegister(char* name, int* argTypes, skeleton f){
     return status;
 };
 
+void *execute_routine(void *exec_param) {
+    struct exec_thread_params params = *((struct exec_thread_params*)exec_param);
+    free(exec_param);
+    // struct message_and_fd *temp = (struct message_and_fd*)mandfd_param;
+    struct message_and_fd m_and_fd = *(params.mfd);
+    free(params.mfd);
+    struct message * prototype_msg = params.prototype_msg;
+    struct message * args_msg = params.args_msg;
+
+    //print_with_flush(context_str, "Got a message from a client to execute.\n");
+
+
+    struct function_prototype f = deserialize_function_prototype((int*)(prototype_msg->data));
+    //print_function_prototype((char *)context_str, f);
+    void ** args = create_empty_args_array(f);
+    deserialize_args(f, (char*)args_msg->data, args, ((1 << ARG_INPUT) | (1 << ARG_OUTPUT)));
+    //print_args((char *)context_str, f, args);
+
+    /*  Now find out which function we're actually calling and call it */
+    int * arg_data_buffer = (int*) malloc((f.arg_len + 1) * sizeof(int));
+    memcpy(arg_data_buffer, f.arg_data, sizeof(int) * f.arg_len);
+    arg_data_buffer[f.arg_len] = 0;
+    skeleton skel = get_function_skeleton(f);
+
+    message_type msg_type = FUNCTION_ARGS;
+
+    if (skel) {
+        int status = skel(arg_data_buffer, args);
+        if (status < 0) msg_type = FUNC_FAILURE;
+    }
+
+    /*  Serialize the arguments to send back the output */
+    int * serialized_output = serialize_args(f, args);
+    struct message * return_msg = create_message_frame(
+        get_args_buffer_size(f), skel ? msg_type : FUNC_NOT_FOUND, serialized_output);
+
+    send_message(m_and_fd.fd, return_msg);
+    destroy_message_frame_and_data(return_msg);
+
+    free(arg_data_buffer);
+    destroy_args_array(f, args);
+    free(f.arg_data);
+    destroy_message_frame_and_data(prototype_msg);
+    destroy_message_frame_and_data(args_msg);
+
+    return 0;
+}
+
 int rpcExecute() {
     int return_code = 0;
     if (registered_functions.size() == 0) {
@@ -406,42 +456,22 @@ int rpcExecute() {
                 goto exit;
                 break;
             } case EXECUTE: {
-                //print_with_flush(context_str, "Got a message from a client to execute.\n");
                 struct message * prototype_msg = recv_message(m_and_fd.fd);
                 struct message * args_msg = recv_message(m_and_fd.fd);
 
-                struct function_prototype f = deserialize_function_prototype((int*)(prototype_msg->data));
-                //print_function_prototype((char *)context_str, f);
-                void ** args = create_empty_args_array(f);
-                deserialize_args(f, (char*)args_msg->data, args, ((1 << ARG_INPUT) | (1 << ARG_OUTPUT)));
-                //print_args((char *)context_str, f, args);
+                pthread_t thread;
+                int ret;
 
-                /*  Now find out which function we're actually calling and call it */
-                int * arg_data_buffer = (int*) malloc((f.arg_len + 1) * sizeof(int));
-                memcpy(arg_data_buffer, f.arg_data, sizeof(int) * f.arg_len);
-                arg_data_buffer[f.arg_len] = 0;
-                skeleton skel = get_function_skeleton(f);
+                struct message_and_fd *mfd = (struct message_and_fd *)malloc(sizeof(struct message_and_fd));
+                memcpy(mfd, &m_and_fd, sizeof(struct message_and_fd));
 
-                message_type msg_type = FUNCTION_ARGS;
+                struct exec_thread_params *params = (struct exec_thread_params *)malloc(sizeof(struct exec_thread_params));
+                params->mfd = mfd;
+                params->prototype_msg = prototype_msg;
+                params->args_msg = args_msg;
 
-                if (skel) {
-                    int status = skel(arg_data_buffer, args);
-                    if (status < 0) msg_type = FUNC_FAILURE;
-                }
-
-                /*  Serialize the arguments to send back the output */
-                int * serialized_output = serialize_args(f, args);
-                struct message * return_msg = create_message_frame(
-                    get_args_buffer_size(f), skel ? msg_type : FUNC_NOT_FOUND, serialized_output);
-
-                send_message(m_and_fd.fd, return_msg);
-                destroy_message_frame_and_data(return_msg);
-
-                free(arg_data_buffer);
-                destroy_args_array(f, args);
-                free(f.arg_data);
-                destroy_message_frame_and_data(prototype_msg);
-                destroy_message_frame_and_data(args_msg);
+                ret = pthread_create(&thread, NULL, execute_routine, (void *)params);
+                if (ret) fprintf(stderr, "%s\n", "ERROR cannot create a thread to process client");
                 break;
             } default: {
                 assert(0);

@@ -78,6 +78,12 @@ struct func_skel_pair {
     skeleton skel_function;
 };
 
+struct exec_thread_params {
+    struct message * prototype_msg;
+    struct message * args_msg;
+    struct message_and_fd * mfd;
+};
+
 struct message * recv_message(int);
 int send_message(int, struct message *);
 struct message * create_message_frame(int, enum message_type, int *);
