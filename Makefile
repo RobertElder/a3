@@ -1,4 +1,5 @@
 FLAGS=-Wall -Werror -g
+assignment: librpc.a binder 
 librpc.a: rpc.o messages.o
 	ar rcs librpc.a rpc.o
 	ar rcs librpc.a messages.o
