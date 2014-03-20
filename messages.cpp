@@ -69,8 +69,10 @@ struct message * recv_message(int sockfd){
             return 0;
         }
 
-        /*  Probably never going to happen, but make sure we got the whole int */
-        assert(bytes_received == received_message->length);
+        if (bytes_received != received_message->length) {
+            destroy_message_frame(received_message);
+            return 0;
+        }
 
         u_int i;
         for (i = 0; i < received_message->length % sizeof(int); i++) {
