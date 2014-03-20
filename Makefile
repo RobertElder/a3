@@ -1,9 +1,9 @@
 FLAGS=-Wall -Werror -g
-test: client binder server custom_client custom_server
-	/bin/bash do-test.sh
 librpc.a: rpc.o messages.o
 	ar rcs librpc.a rpc.o
 	ar rcs librpc.a messages.o
+test: client binder server custom_client custom_server
+	/bin/bash do-test.sh
 rpc.o: rpc.cpp rpc.h
 	g++ $(FLAGS) -c rpc.cpp -o rpc.o -pthread
 messages.o: messages.cpp messages.h
