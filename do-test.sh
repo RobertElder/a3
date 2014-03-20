@@ -24,10 +24,11 @@ echo "Binder started..."
 HOSTS=("ubuntu1204-002" "ubuntu1204-004" "ubuntu1204-006")
 for i in {1..5}
 do
-    host=${HOSTS[$RANDOM % 3]}
-    echo "Launching server on host ${host}"
-    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server" &
-    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; ./server" &
+    #host=${HOSTS[$RANDOM % 3]}
+    #echo "Launching server on host ${host}"
+    #ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server" &
+    valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes ./custom_server &
+    ./server &
     sleep 1
 done
 #  Wait a couple seconds for the servers to register
@@ -35,10 +36,12 @@ echo "Launching custom client..."
 #  Run our custom client
 for i in {1..5}
 do
-    host=${HOSTS[$RANDOM % 3]}
-    echo "Launching client on host ${host}"
-    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./custom_client " &
-    ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; echo \"n\" | ./client" &
+    #host=${HOSTS[$RANDOM % 3]}
+    #echo "Launching client on host ${host}"
+    #ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./custom_client " &
+    valgrind --gen-suppressions=all -q --suppressions=valgrind-suppressions --leak-check=full --show-reachable=yes --track-origins=yes  ./custom_client &
+    ./client &
+    #ssh -i ~/.ssh/foo ${host} "cd /u0/`whoami`/cs454/a3 && setenv BINDER_ADDRESS ${BINDER_ADDRESS}; setenv BINDER_PORT ${BINDER_PORT}; echo \"n\" | ./client" &
 done
 sleep 5
 #  Run the client provided in the assignemnt code
