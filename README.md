@@ -1,5 +1,7 @@
 This is a distributed system implementation of an RPC call library for c/c++ that allows the user to outsource arbitrary functions to servers that, provided that they are given an implementation  of the function.  Servers and clients are able to connect and disconnect via a binder server of a fixed known address.
 
+The original project specifications for the project are listed in A3W14.pdf.  We received a grade of 90% on this assignment.
+
 It was build completely from scratch in 9 days by Robert Elder and Greta Cutulenco as part of CS454 Distributed Systems at the University of waterloo.  Also of note, is the fact that I (Robert) had a course load of 7 courses at the time I worked on this.
 
 How to build librpc.a
